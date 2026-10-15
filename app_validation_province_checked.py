@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, send_file
 import requests
 import math
 from pathlib import Path
@@ -88,6 +88,7 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+const $=id=>document.getElementById(id);
 const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page'), pageActions=$('page-actions');
 function openPage(id){dashboard.classList.add('hidden');routePage.classList.toggle('hidden',id!=='route-page');gamePage.classList.toggle('hidden',id!=='game-page');pageActions.classList.remove('hidden');$('site-subtitle').textContent=id==='route-page'?'انتخاب مبدأ و مقصد و محاسبه مسیر جاده‌ای': 'بازی مار دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}}
 document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.open)));
@@ -95,7 +96,6 @@ $('back-dashboard').addEventListener('click',()=>{routePage.classList.add('hidde
 const map=L.map('map').setView([35.6892,51.3890],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
 let origin=null,dest=null,originMarker=null,destMarker=null,routeLayer=null,cityCenter=null;
-const $=id=>document.getElementById(id);
 const green=L.divIcon({className:'',html:'<div style="width:20px;height:20px;background:#10b981;border:3px solid white;border-radius:50%;box-shadow:0 0 0 5px #10b98133"></div>',iconSize:[20,20],iconAnchor:[10,10]});
 const red=L.divIcon({className:'',html:'<div style="width:20px;height:20px;background:#ef4444;border:3px solid white;border-radius:50%;box-shadow:0 0 7px #0005"></div>',iconSize:[20,20],iconAnchor:[10,10]});
 async function nominatimSearch(q){const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8&countrycodes=ir&accept-language=fa&q='+encodeURIComponent(q));if(!r.ok)throw Error('جست‌وجوی مکان در دسترس نیست');return r.json()}
