@@ -199,13 +199,13 @@ async function generateCoordinatesExcel(){
   link.classList.add('hidden');
   if(!file){status.textContent='اول فایل اکسل را انتخاب کن.';return;}
   const form=new FormData();form.append('file',file);
-  status.textContent='در حال ساخت مختصات جدید بر اساس کد پلاک ستون Q...';
+  status.textContent='در حال ساخت مختصات با فاصله مستقیم حداقل ۲۵ کیلومتر؛ فقط ستون‌های I تا L تغییر می‌کنند...';
   try{
     const response=await fetch('/generate_coordinates_excel',{method:'POST',body:form});
     if(!response.ok){let msg='ساخت مختصات ناموفق بود.';try{const j=await response.json();msg=j.error||msg}catch(e){}throw Error(msg)}
     const blob=await response.blob(), url=URL.createObjectURL(blob);
-    link.href=url;link.download='barbarg_generated_coordinates.xlsx';link.classList.remove('hidden');
-    status.textContent='فایل مختصات جدید آماده است. ردیف‌های دارای کد پلاک ناشناخته در گزارش مشخص شده‌اند.';
+    link.href=url;link.download=file.name.toLowerCase().endsWith('.xlsm')?'barbarg_coordinates_updated.xlsm':'barbarg_coordinates_updated.xlsx';link.classList.remove('hidden');
+    status.textContent='فایل آماده است؛ فقط مختصات ستون‌های I تا L تغییر کرده و بقیه اطلاعات اکسل حفظ شده‌اند. فاصله مستقیم هدف حداقل ۲۵ کیلومتر است. اگر کد پلاک ناشناخته باشد، مختصات همان ردیف بدون تغییر می‌ماند.';
   }catch(e){status.textContent='خطا: '+e.message;}
 }
 
@@ -328,7 +328,7 @@ def straight_distance_km(a, b):
     h = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     return 6371.0 * 2 * asin(sqrt(min(1.0, h)))
 
-def make_pair(city, minimum_km=20):
+def make_pair(city, minimum_km=25):
     name, lat, lon, radius = city
     # Approximate random points around a city center; no external routing call.
     for _ in range(300):
@@ -504,10 +504,11 @@ def validate_route():
 
 @app.route('/generate_coordinates_excel', methods=['POST'])
 def generate_coordinates_excel():
-    """Create a separate coordinate workbook using the two-digit plate code in column Q.
+    """Keep the uploaded workbook intact and update only I:L coordinate cells.
 
-    Coordinates are approximate randomized points around a selected seed city, not verified
-    municipal-boundary points and not a guarantee of Barbarg acceptance.
+    Q is read for the two-digit plate code. I/J are origin latitude/longitude;
+    K/L are destination latitude/longitude. Points are approximate and not
+    guaranteed to lie inside official city boundaries or be accepted by Barbarg.
     """
     if 'file' not in request.files or not request.files['file'].filename:
         return jsonify(error='فایل اکسل انتخاب نشده است.'), 400
@@ -515,52 +516,61 @@ def generate_coordinates_excel():
     filename = file.filename.lower()
     if not filename.endswith(('.xlsx', '.xlsm')):
         return jsonify(error='لطفاً فایل xlsx یا xlsm انتخاب کن.'), 400
+    keep_vba = filename.endswith('.xlsm')
     try:
-        source_wb = load_workbook(file, data_only=True, read_only=True)
+        # Do not rebuild a simplified workbook: preserve the user's original sheet,
+        # columns, formatting, formulas, and other data. Only I:L values are changed.
+        source_wb = load_workbook(file, data_only=False, read_only=False, keep_vba=keep_vba)
         source_ws = source_wb.active
         if source_ws.max_column < 17:
             source_wb.close()
-            return jsonify(error='ستون Q در فایل پیدا نشد. فایل باید ستون «کد پلاک» را در ستون Q داشته باشد.'), 400
-        output_wb = Workbook()
-        output_ws = output_wb.active
-        output_ws.title = 'مختصات تولیدشده'
-        output_ws.append(['کد پلاک (ستون Q)', 'استان تخمینی از کد', 'شهر نمونه', 'عرض مبدأ', 'طول مبدأ', 'عرض مقصد', 'طول مقصد', 'فاصله مستقیم (کیلومتر)', 'وضعیت / توضیح'])
+            return jsonify(error='ستون Q در فایل پیدا نشد. فایل باید کد پلاک را در ستون Q داشته باشد.'), 400
+
         generated = 0
+        failed = 0
         for row_num in range(2, source_ws.max_row + 1):
             raw_code = source_ws.cell(row_num, 17).value
             normalized = normalize_digits(raw_code)
             match = re.search(r'(?<!\d)(\d{2})(?!\d)', normalized)
             code = int(match.group(1)) if match else None
             province = PLATE_PROVINCES.get(code) if code is not None else None
-            if not province:
-                output_ws.append([raw_code, '', '', '', '', '', '', '', 'کد دو رقمی پلاک در ستون Q خوانده نشد یا در جدول کدها موجود نیست؛ این ردیف را دستی بررسی کن.'])
-                continue
-            cities = PROVINCE_CITIES.get(province, [])
-            if not cities:
-                output_ws.append([raw_code, province, '', '', '', '', '', '', 'برای این استان شهر نمونه تعریف نشده است؛ مختصات ساخته نشد.'])
-                continue
-            city = random.choice(cities)
-            pair = make_pair(city, minimum_km=20)
+            pair = None
+            if province:
+                cities = PROVINCE_CITIES.get(province, [])
+                if cities:
+                    # Try several seed cities in the province before marking failure.
+                    candidates = cities[:]
+                    random.shuffle(candidates)
+                    for city in candidates:
+                        pair = make_pair(city, minimum_km=25)
+                        if pair:
+                            break
             if not pair:
-                output_ws.append([raw_code, province, city[0], '', '', '', '', '', 'ساخت دو نقطه با فاصله حداقل ۲۰ کیلومتر ممکن نشد؛ دوباره تلاش کن یا دستی بررسی کن.'])
+                # Leave the original I:L values unchanged when code/pair is unknown.
+                failed += 1
                 continue
-            a, b, distance, city_name = pair
-            # Six decimals are useful for mapping but do not imply survey-grade accuracy.
-            output_ws.append([raw_code, province, city_name, round(a[0], 6), round(a[1], 6), round(b[0], 6), round(b[1], 6), round(distance, 2), 'مختصات تقریبی تصادفی در پیرامون شهر نمونه؛ فاصله مستقیم حداقل ۲۰ کیلومتر است. مرز رسمی شهر و تأیید باربرگ تضمین نشده است.'])
+            a, b, distance, _city_name = pair
+            # ONLY update latitude/longitude cells: I, J, K, L.
+            source_ws.cell(row_num, 9, round(a[0], 6))
+            source_ws.cell(row_num, 10, round(a[1], 6))
+            source_ws.cell(row_num, 11, round(b[0], 6))
+            source_ws.cell(row_num, 12, round(b[1], 6))
             generated += 1
-        source_wb.close()
-        output_ws.freeze_panes = 'A2'
-        output_ws.auto_filter.ref = output_ws.dimensions
-        widths = [22, 25, 20, 16, 16, 16, 16, 24, 72]
-        for idx, width in enumerate(widths, 1):
-            output_ws.column_dimensions[__import__('openpyxl').utils.get_column_letter(idx)].width = width
+
         output = BytesIO()
-        output_wb.save(output)
-        output_wb.close()
+        source_wb.save(output)
+        source_wb.close()
         output.seek(0)
-        return send_file(output, as_attachment=True, download_name='barbarg_generated_coordinates.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        extension = '.xlsm' if keep_vba else '.xlsx'
+        outname = 'barbarg_coordinates_updated' + extension
+        mimetype = ('application/vnd.ms-excel.sheet.macroEnabled.12' if keep_vba else
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response = send_file(output, as_attachment=True, download_name=outname, mimetype=mimetype)
+        response.headers['X-Coordinates-Generated'] = str(generated)
+        response.headers['X-Coordinates-Unchanged'] = str(failed)
+        return response
     except Exception as e:
-        return jsonify(error='ساخت فایل مختصات انجام نشد. بررسی کن ستون Q واقعاً کد پلاک دارد و فایل سالم است. جزئیات: ' + str(e)), 500
+        return jsonify(error='ساخت فایل مختصات انجام نشد. ستون Q باید کد پلاک داشته باشد و فایل Excel سالم باشد. جزئیات: ' + str(e)), 500
 
 
 @app.route('/process_excel', methods=['POST'])
