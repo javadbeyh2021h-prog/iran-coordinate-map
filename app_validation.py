@@ -70,7 +70,20 @@ function setStatus(text){document.getElementById('status').textContent=text}
 function validPoint(p){return Number.isFinite(p.lat)&&Number.isFinite(p.lng)}
 function initializeMap(){
   map=L.map('map').setView([32.4,53.7],5);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'}).addTo(map);
+  const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'});
+  const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'});
+  let satelliteErrors = 0, fallbackUsed = false;
+  satelliteLayer.on('tileerror',()=>{
+    satelliteErrors++;
+    if(satelliteErrors >= 4 && !fallbackUsed){
+      fallbackUsed = true;
+      if(map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+      streetLayer.addTo(map);
+      setStatus('تصویر ماهواره‌ای در دسترس نبود؛ نقشه جاده‌ای جایگزین نمایش داده شد. از کنترل لایه‌ها می‌توانی دوباره ماهواره‌ای را امتحان کنی.');
+    }
+  });
+  satelliteLayer.addTo(map);
+  L.control.layers({'ماهواره‌ای':satelliteLayer,'جاده‌ای':streetLayer},null,{collapsed:false,position:'topright'}).addTo(map);
   map.on('click',e=>{
     const lat=e.latlng.lat, lng=e.latlng.lng;
     if(!validPoint(points.origin) || validPoint(points.destination)){
