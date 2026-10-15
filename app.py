@@ -1,8 +1,9 @@
 from flask import Flask, render_template_string, request, send_file, jsonify
 from io import BytesIO
 import random
-import math
+import time
 import re
+import requests
 from openpyxl import load_workbook, Workbook
 
 app = Flask(__name__)
@@ -49,12 +50,12 @@ HTML = r'''<!DOCTYPE html>
 
   <section class="panel">
     <div class="section-title">۵. ساخت مختصات باربرگ از روی پلاک اکسل</div>
-    <p class="small">فایل Excel را انتخاب کن. برنامه کد پلاک ستون Q را می‌خواند، استان را تشخیص می‌دهد و یک فایل اکسل جدید با پلاک و چهار ستون مختصات مبدأ و مقصد می‌سازد. فاصله مستقیم دو نقطه حداقل ۲۰ کیلومتر در نظر گرفته می‌شود.</p>
+    <p class="small">فایل Excel را انتخاب کن. برنامه کد دو رقمی ستون Q را می‌خواند، استان را تا جایی که در جدولش شناخته شده باشد تشخیص می‌دهد و مختصات را در ستون‌های I تا L می‌نویسد. برای هر ردیف فاصله جاده‌ای باید حداقل ۲۰ کیلومتر باشد. ردیف‌های ناشناخته یا بدون مسیر معتبر در گزارش مشخص می‌شوند.</p>
     <div class="field-card">
       <strong>فایل Excel باربرگ</strong>
       <input id="excelFile" type="file" accept=".xlsx,.xlsm">
       <div class="buttons"><button onclick="processExcel()">ساخت فایل مختصات</button></div>
-      <p class="status" id="excelStatus">ورودی: ستون Q؛ خروجی: پلاک، عرض مبدأ، طول مبدأ، عرض مقصد و طول مقصد.</p>
+      <p class="status" id="excelStatus">ستون Q: کد پلاک؛ ستون‌های I/J: مبدأ؛ ستون‌های K/L: مقصد.</p>
       <a id="excelDownload" class="hidden" style="display:inline-block;margin-top:8px;color:var(--primary);font-weight:bold" href="#">دانلود فایل آماده‌شده</a>
     </div>
   </section>
@@ -108,8 +109,8 @@ async function processExcel(){
     const response=await fetch('/process_excel',{method:'POST',body:form});
     if(!response.ok){let msg='پردازش ناموفق بود.';try{const j=await response.json();msg=j.error||msg}catch(e){}throw Error(msg)}
     const blob=await response.blob(), url=URL.createObjectURL(blob);
-    link.href=url;link.download='coordinates_output.xlsx';link.classList.remove('hidden');
-    status.textContent='فایل اکسل جدید آماده شد؛ فقط پلاک و چهار ستون مختصات داخل آن است. برای پلاک‌های ناشناخته مختصات خالی می‌ماند.';
+    link.href=url;link.download='barbarg_with_coordinates.xlsx';link.classList.remove('hidden');
+    status.textContent='آماده شد. روی «دانلود فایل آماده‌شده» بزن. ردیف‌های نامشخص در ستون وضعیت بررسی ثبت می‌شوند.';
   }catch(e){status.textContent='خطا: '+e.message;}
 }
 
@@ -125,69 +126,84 @@ def home():
 @app.route('/iran-map.png')
 def iran_map_image():
     return send_file(
-       
-        app.root_path + '/iran-map.png.png',
-
+        app.root_path + '/iran-map.png',
         mimetype='image/png'
     )
 
 
-# Approximate province mapping for common Iranian plate codes. Unknown codes are
-# deliberately flagged instead of generating misleading coordinates.
+# Province code mapping based on commonly published Iranian private-car plate code tables.
+# Some codes can overlap by letter/region; this tool only sees the two-digit code,
+# so ambiguous/changed allocations should be verified against the plate letter when needed.
 PLATE_PROVINCES = {
-    11:"تهران",12:"تهران",13:"تهران",14:"تهران",15:"تهران",16:"تهران",17:"تهران",18:"تهران",19:"تهران",
-    21:"اصفهان",22:"اصفهان",23:"اصفهان",24:"اصفهان",25:"اصفهان",26:"اصفهان",
-    31:"فارس",32:"فارس",33:"فارس",34:"فارس",35:"فارس",36:"فارس",
-    41:"آذربایجان شرقی",42:"آذربایجان شرقی",43:"آذربایجان شرقی",44:"آذربایجان شرقی",
-    51:"خراسان رضوی",52:"خراسان رضوی",53:"خراسان رضوی",54:"خراسان رضوی",55:"خراسان رضوی",56:"خراسان رضوی",57:"خراسان رضوی",58:"خراسان رضوی",
-    61:"خوزستان",62:"خوزستان",63:"کرمان",64:"کرمان",65:"کرمان",
-    71:"مازندران",72:"مازندران",73:"گیلان",74:"گیلان",75:"گیلان",
-    81:"همدان",82:"همدان",83:"همدان",84:"همدان",
-    91:"آذربایجان غربی",92:"آذربایجان غربی",93:"آذربایجان غربی",94:"آذربایجان غربی",
-    29:"کرمانشاه"
+    # Tehran / Alborz
+    10:"تهران",11:"تهران",20:"تهران",22:"تهران",30:"البرز",33:"تهران",38:"البرز",40:"تهران",44:"تهران",50:"تهران",55:"تهران",60:"تهران",66:"تهران",68:"البرز",70:"تهران",77:"تهران",78:"البرز",80:"تهران",88:"تهران",90:"تهران",99:"تهران",
+    # Isfahan
+    13:"اصفهان",23:"اصفهان",43:"اصفهان",53:"اصفهان",67:"اصفهان",
+    # Razavi / North / South Khorasan (some codes require plate letter to distinguish)
+    12:"خراسان رضوی",32:"خراسان رضوی",36:"خراسان رضوی",42:"خراسان رضوی",74:"خراسان رضوی",26:"خراسان شمالی",52:"خراسان جنوبی",
+    # Khuzestan and East/West Azerbaijan
+    14:"خوزستان",24:"خوزستان",34:"خوزستان",15:"آذربایجان شرقی",25:"آذربایجان شرقی",35:"آذربایجان شرقی",17:"آذربایجان غربی",27:"آذربایجان غربی",37:"آذربایجان غربی",
+    # Fars, Mazandaran, Kerman, Gilan
+    63:"فارس",73:"فارس",83:"فارس",93:"فارس",62:"مازندران",72:"مازندران",82:"مازندران",92:"مازندران",45:"کرمان",65:"کرمان",75:"کرمان",46:"گیلان",56:"گیلان",76:"گیلان",
+    # Other provinces
+    18:"همدان",28:"همدان",19:"کرمانشاه",29:"کرمانشاه",39:"کرمانشاه",31:"لرستان",41:"لرستان",51:"کردستان",61:"کردستان",47:"مرکزی",57:"مرکزی",48:"بوشهر",58:"بوشهر",71:"چهارمحال و بختیاری",81:"چهارمحال و بختیاری",79:"قزوین",89:"قزوین",84:"هرمزگان",94:"هرمزگان",85:"سیستان و بلوچستان",95:"سیستان و بلوچستان",86:"سمنان",96:"سمنان",87:"زنجان",97:"زنجان",91:"اردبیل",98:"ایلام",49:"کهگیلویه و بویراحمد",59:"گلستان",69:"گلستان",54:"یزد",64:"یزد",16:"قم"
 }
-# City centers and rough local search envelopes (lat, lon, radius in degrees).
-# These are approximate seed points, not official city-boundary polygons.
+# Approximate city centers and sampling envelopes. These are seed areas, not official city boundaries.
+# A wider envelope allows finding two points at least 20 km apart, but points are approximate.
 PROVINCE_CITIES = {
-    "تهران":[("تهران",35.6892,51.3890,.10),("شهریار",35.6590,51.0590,.08),("ورامین",35.3252,51.6457,.07)],
-    "اصفهان":[("اصفهان",32.6546,51.6680,.10),("کاشان",33.9850,51.4100,.08),("نجف‌آباد",32.6324,51.3668,.07),("خمینی‌شهر",32.7000,51.5200,.07)],
-    "فارس":[("شیراز",29.5918,52.5837,.10),("مرودشت",29.8742,52.8025,.07),("کازرون",29.6195,51.6541,.07)],
-    "آذربایجان شرقی":[("تبریز",38.0962,46.2738,.10),("مراغه",37.3892,46.2374,.07),("میانه",37.4210,47.7150,.07)],
-    "خراسان رضوی":[("مشهد",36.2972,59.6067,.10),("نیشابور",36.2133,58.7958,.07),("سبزوار",36.2126,57.6819,.07)],
-    "خوزستان":[("اهواز",31.3183,48.6706,.10),("دزفول",32.3831,48.4236,.07),("آبادان",30.3473,48.2934,.07)],
-    "کرمان":[("کرمان",30.2839,57.0834,.10),("رفسنجان",30.4067,55.9939,.07),("سیرجان",29.4514,55.6800,.07)],
-    "مازندران":[("ساری",36.5659,53.0586,.08),("آمل",36.4696,52.3507,.07),("بابل",36.5387,52.6765,.07)],
-    "گیلان":[("رشت",37.2808,49.5832,.08),("لاهیجان",37.2072,50.0039,.06),("انزلی",37.4727,49.4622,.06)],
-    "همدان":[("همدان",34.7981,48.5150,.08),("ملایر",34.2969,48.8235,.07),("نهاوند",34.1885,48.3768,.06)],
-    "آذربایجان غربی":[("ارومیه",37.5527,45.0761,.08),("خوی",38.5503,44.9521,.06),("مهاباد",36.7631,45.7222,.06)],
-    "کرمانشاه":[("کرمانشاه",34.3142,47.0650,.10),("اسلام‌آباد غرب",34.1094,46.5275,.07),("کنگاور",34.5043,47.9653,.06),("پاوه",35.0434,46.3565,.05)]
+    "تهران":[("تهران",35.6892,51.3890,.20),("ورامین",35.3252,51.6457,.18),("شهریار",35.6590,51.0590,.18)],
+    "البرز":[("کرج",35.8400,50.9391,.18),("نظرآباد",35.9520,50.6070,.16)],
+    "اصفهان":[("اصفهان",32.6546,51.6680,.20),("کاشان",33.9850,51.4100,.18),("نجف‌آباد",32.6324,51.3668,.16)],
+    "خراسان رضوی":[("مشهد",36.2972,59.6067,.20),("نیشابور",36.2133,58.7958,.18),("سبزوار",36.2126,57.6819,.18)],
+    "خراسان شمالی":[("بجنورد",37.4747,57.3290,.18),("شیروان",37.3967,57.9290,.16)],
+    "خراسان جنوبی":[("بیرجند",32.8663,59.2211,.18),("قائن",33.7265,59.1844,.16)],
+    "خوزستان":[("اهواز",31.3183,48.6706,.20),("دزفول",32.3831,48.4236,.18),("آبادان",30.3473,48.2934,.16)],
+    "آذربایجان شرقی":[("تبریز",38.0962,46.2738,.20),("مراغه",37.3892,46.2374,.16),("میانه",37.4210,47.7150,.16)],
+    "آذربایجان غربی":[("ارومیه",37.5527,45.0761,.18),("خوی",38.5503,44.9521,.16),("مهاباد",36.7631,45.7222,.16)],
+    "فارس":[("شیراز",29.5918,52.5837,.20),("مرودشت",29.8742,52.8025,.18),("کازرون",29.6195,51.6541,.16)],
+    "مازندران":[("ساری",36.5659,53.0586,.18),("آمل",36.4696,52.3507,.16),("بابل",36.5387,52.6765,.16)],
+    "کرمان":[("کرمان",30.2839,57.0834,.20),("رفسنجان",30.4067,55.9939,.18),("سیرجان",29.4514,55.6800,.18)],
+    "گیلان":[("رشت",37.2808,49.5832,.18),("لاهیجان",37.2072,50.0039,.16),("انزلی",37.4727,49.4622,.16)],
+    "همدان":[("همدان",34.7981,48.5150,.18),("ملایر",34.2969,48.8235,.16),("نهاوند",34.1885,48.3768,.16)],
+    "کرمانشاه":[("کرمانشاه",34.3142,47.0650,.18),("اسلام‌آباد غرب",34.1094,46.5275,.16),("کنگاور",34.5043,47.9653,.16)],
+    "لرستان":[("خرم‌آباد",33.4878,48.3558,.18),("بروجرد",33.8942,48.7517,.16)],
+    "کردستان":[("سنندج",35.3111,46.9964,.18),("سقز",36.2499,46.2735,.16)],
+    "مرکزی":[("اراک",34.0917,49.6892,.18),("ساوه",35.0213,50.3566,.16)],
+    "بوشهر":[("بوشهر",28.9234,50.8203,.18),("برازجان",29.2666,51.2159,.16)],
+    "چهارمحال و بختیاری":[("شهرکرد",32.3256,50.8644,.16),("بروجن",31.9652,51.2873,.16)],
+    "قزوین":[("قزوین",36.2688,50.0041,.18),("تاکستان",36.0697,49.6959,.16)],
+    "هرمزگان":[("بندرعباس",27.1832,56.2666,.18),("میناب",27.1467,57.0750,.16)],
+    "سیستان و بلوچستان":[("زاهدان",29.4963,60.8629,.20),("زابل",31.0306,61.4949,.18)],
+    "سمنان":[("سمنان",35.5769,53.3950,.18),("شاهرود",36.4182,54.9763,.16)],
+    "زنجان":[("زنجان",36.6736,48.4787,.18),("ابهر",36.1468,49.2180,.16)],
+    "اردبیل":[("اردبیل",38.2498,48.2933,.18),("پارس‌آباد",39.6482,47.9174,.16)],
+    "ایلام":[("ایلام",33.6374,46.4227,.18),("دهلران",32.6941,47.2679,.16)],
+    "کهگیلویه و بویراحمد":[("یاسوج",30.6682,51.5879,.16),("دهدشت",30.7942,50.5645,.16)],
+    "گلستان":[("گرگان",36.8456,54.4393,.18),("گنبدکاووس",37.2500,55.1672,.16)],
+    "یزد":[("یزد",31.8974,54.3569,.20),("میبد",32.2487,54.0165,.16)],
+    "قم":[("قم",34.6416,50.8746,.18)]
 }
 def normalize_digits(value):
     return str(value or '').translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩','01234567890123456789')).strip()
-def direct_distance_km(a, b):
-    """فاصله مستقیم دو نقطه بر حسب کیلومتر؛ بدون درخواست به سرویس خارجی."""
-    lat1, lon1 = map(math.radians, a)
-    lat2, lon2 = map(math.radians, b)
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 6371.0 * 2 * math.asin(min(1.0, math.sqrt(h)))
-
+def straight_distance_km(a, b):
+    # Haversine straight-line distance (not road distance).
+    from math import radians, sin, cos, asin, sqrt
+    lat1, lon1 = map(radians, a)
+    lat2, lon2 = map(radians, b)
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    h = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    return 6371.0 * 2 * asin(sqrt(min(1.0, h)))
 
 def make_pair(city, minimum_km=20):
-    # Seed locations are approximate city centers. Use a sufficiently broad
-    # local envelope so a pair at least 20 km apart can be found.
     name, lat, lon, radius = city
-    radius = max(radius, 0.16)
-    for _ in range(250):
-        a = (lat + random.uniform(-radius, radius),
-             lon + random.uniform(-radius, radius))
-        b = (lat + random.uniform(-radius, radius),
-             lon + random.uniform(-radius, radius))
-        if direct_distance_km(a, b) >= minimum_km:
-            return a, b, direct_distance_km(a, b), name
+    # Approximate random points around a city center; no external routing call.
+    for _ in range(300):
+        a = (lat + random.uniform(-radius, radius), lon + random.uniform(-radius, radius))
+        b = (lat + random.uniform(-radius, radius), lon + random.uniform(-radius, radius))
+        distance = straight_distance_km(a, b)
+        if distance >= minimum_km:
+            return a, b, distance, name
     return None
-
 
 @app.route('/process_excel', methods=['POST'])
 def process_excel():
@@ -196,63 +212,45 @@ def process_excel():
     file = request.files['file']
     if not file.filename.lower().endswith(('.xlsx', '.xlsm')):
         return jsonify(error='لطفاً فایل xlsx یا xlsm انتخاب کن.'), 400
-
     try:
         source_wb = load_workbook(file, data_only=True, read_only=True)
         source_ws = source_wb.active
-
-        # A brand-new workbook with exactly five columns.
         output_wb = Workbook()
         output_ws = output_wb.active
         output_ws.title = 'مختصات'
-        output_ws.append([
-            'پلاک', 'عرض جغرافیایی مبدأ (Lat)', 'طول جغرافیایی مبدأ (Long)',
-            'عرض جغرافیایی مقصد (Lat)', 'طول جغرافیایی مقصد (Long)'
-        ])
+        output_ws.append(['پلاک', 'عرض جغرافیایی مبدأ (Lat)', 'طول جغرافیایی مبدأ (Long)', 'عرض جغرافیایی مقصد (Lat)', 'طول جغرافیایی مقصد (Long)'])
 
         for row in range(2, source_ws.max_row + 1):
-            raw_plate = source_ws.cell(row, 17).value  # Column Q
-            plate_value = '' if raw_plate is None else str(raw_plate).strip()
-            digits = normalize_digits(raw_plate)
-            match = re.search(r'(?<!\\d)(\\d{1,2})(?!\\d)', digits)
+            # In the user's uploaded file, Q contains the two-digit first part of the plate.
+            raw_code = source_ws.cell(row, 17).value
+            code_digits = normalize_digits(raw_code)
+            match = re.search(r'(\d{1,2})', code_digits)
             code = int(match.group(1)) if match else None
             province = PLATE_PROVINCES.get(code)
+            plate_value = '' if raw_code is None else str(raw_code).strip()
 
-            # Keep every source row in the output, even if its plate code
-            # is unknown; in that case the four coordinate cells stay blank.
             if not province or not PROVINCE_CITIES.get(province):
                 output_ws.append([plate_value, None, None, None, None])
                 continue
 
-            city_order = PROVINCE_CITIES[province][:]
-            random.shuffle(city_order)
+            cities = PROVINCE_CITIES[province][:]
+            random.shuffle(cities)
             pair = None
-            for city in city_order:
+            for city in cities:
                 pair = make_pair(city, minimum_km=20)
                 if pair:
                     break
-
             if not pair:
                 output_ws.append([plate_value, None, None, None, None])
                 continue
-
             a, b, distance_km, city_name = pair
-            output_ws.append([
-                plate_value,
-                round(a[0], 6), round(a[1], 6),
-                round(b[0], 6), round(b[1], 6)
-            ])
+            output_ws.append([plate_value, round(a[0], 6), round(a[1], 6), round(b[0], 6), round(b[1], 6)])
 
         source_wb.close()
         output = BytesIO()
         output_wb.save(output)
         output.seek(0)
-        return send_file(
-            output,
-            as_attachment=True,
-            download_name='coordinates_output.xlsx',
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
+        return send_file(output, as_attachment=True, download_name='coordinates_output.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as e:
         return jsonify(error='فایل پردازش نشد. مطمئن شو فایل Excel سالم است. جزئیات: ' + str(e)), 500
 
