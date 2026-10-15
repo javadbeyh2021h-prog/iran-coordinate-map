@@ -384,22 +384,26 @@ def validate_route():
     except (requests.RequestException, ValueError, KeyError, TypeError):
         pass
 
-    boundary = _load_amol_boundary()
-    if boundary is None:
+    # General-purpose preliminary check for any Iranian city: compare normalized
+    # reverse-geocoded city labels. This is a heuristic, not a legal boundary test.
+    def normalize_place(value):
+        value = str(value or '').strip().replace('ي', 'ی').replace('ك', 'ک')
+        for word in ('شهر ', 'شهرستان ', 'بخش ', 'دهستان '):
+            value = value.replace(word, '')
+        return ''.join(value.split()).lower()
+
+    origin_key = normalize_place(city_origin)
+    destination_key = normalize_place(city_destination)
+    if origin_key and destination_key and origin_key == destination_key:
+        result = 'سازگار اولیه'
+        reason = 'نام محدودهٔ مبدأ و مقصد یکسان است و مسیر جاده‌ای بررسی شد. این بررسی اولیه است و تأیید رسمی یا بررسی قطعی مرز شهری محسوب نمی‌شود.'
+    elif not origin_key or not destination_key:
         result = 'نیازمند بررسی'
-        reason = 'مرز نقشه‌ای آمل از سرویس عمومی دریافت نشد؛ برای جلوگیری از نتیجه اشتباه، داخل یا خارج بودن نقاط تأیید نشد. دوباره تلاش کن.'
+        reason = 'نام محدودهٔ یکی از نقاط از سرویس نقشه قابل تشخیص نبود؛ داخل بودن هر دو نقطه در یک شهر تأیید نشد.'
     else:
-        origin_inside = _point_in_amol(olon, olat, boundary)
-        destination_inside = _point_in_amol(dlon, dlat, boundary)
-        if origin_inside and destination_inside:
-            result = 'داخل محدوده نقشه‌ای آمل'
-            reason = 'هر دو نقطه بر اساس مرز ثبت‌شده در OpenStreetMap داخل محدوده نقشه‌ای آمل قرار دارند. این بررسی جایگزین مرز رسمی شهرداری یا تأیید سامانه باربرگ نیست.'
-        elif not origin_inside and not destination_inside:
-            result = 'نیازمند بررسی'
-            reason = 'هر دو نقطه خارج از مرز نقشه‌ای انتخاب‌شده برای شهر آمل هستند؛ این نتیجه به معنی رد رسمی باربرگ نیست.'
-        else:
-            result = 'نیازمند بررسی'
-            reason = 'یکی از نقاط داخل و دیگری خارج از مرز نقشه‌ای آمل قرار دارد؛ این نتیجه تأیید رسمی باربرگ نیست.'
+        result = 'نیازمند بررسی'
+        reason = 'نام محدودهٔ مبدأ و مقصد متفاوت است؛ لازم است محدودهٔ شهری هر دو نقطه بررسی شود.'
+
     return jsonify(result=result, reason=reason, city_origin=city_origin, city_destination=city_destination,
                    road_km=road_km, duration_min=duration_min)
 
