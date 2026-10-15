@@ -26,7 +26,7 @@ HTML = r'''<!DOCTYPE html>
   </style>
 </head>
 <body>
-<header><div class="head"><div><h1>🧭 راه‌بر | نقشه مسیر ایران</h1><p>انتخاب مبدأ و مقصد، محاسبه مسیر جاده‌ای، ذخیره مسیرها و آماده‌سازی اطلاعات باربرگ</p></div><div class="head-actions"><button onclick="toggleTheme()" id="themeBtn">🌙 حالت شب</button><button onclick="exportCSV()">⬇ خروجی اکسل (CSV)</button></div></div></header>
+<header><div class="head"><div><h1>🧭 راه‌بر | نقشه مسیر ایران</h1><p>انتخاب مبدأ و مقصد، محاسبه مسیر جاده‌ای و آماده‌سازی اطلاعات باربرگ</p></div><div class="head-actions"><button onclick="toggleTheme()" id="themeBtn">🌙 حالت شب</button></div></div></header>
 <div class="wrap"><img src="/iran-map.png" alt="نقشه سه‌بعدی ایران" class="iran-banner"></div>
 <main class="wrap">
   <section class="panel">
@@ -46,8 +46,6 @@ HTML = r'''<!DOCTYPE html>
     <div class="grid3" style="margin-top:12px"><div class="metric"><strong>🚗 فاصله جاده‌ای</strong><div class="big" id="routeDistance">—</div></div><div class="metric"><strong>⏱ زمان رانندگی تخمینی</strong><div class="big" id="routeDuration">—</div></div><div class="metric"><strong>🧭 وضعیت</strong><div id="routeStatus" class="small">هنوز مسیری محاسبه نشده است.</div></div></div>
     <div class="buttons"><button onclick="calculateRoute()">محاسبه مسیر جاده‌ای</button><button class="green" onclick="openGoogleMaps()">بازکردن در Google Maps</button><button class="gray" onclick="copyBoth()">کپی هر دو مختصات</button><button class="red" onclick="clearAll()">پاک‌کردن مبدأ و مقصد</button></div>
   </section>
-  <section class="panel" id="validationPanel"><div class="section-title">۳. بررسی اولیه باربرگ شهری</div><p class="small">بررسی اولیه نام محدوده از نقشه عمومی و فاصله مسیر است؛ مرز رسمی شهرداری و تأیید سامانه باربرگ را تضمین نمی‌کند. اگر اطلاعات کافی نباشد، نتیجه «نیازمند بررسی» خواهد بود.</p><div class="buttons"><button onclick="validateCurrentRoute()">بررسی مبدأ و مقصد فعلی</button></div><p class="status" id="validationStatus">ابتدا مبدأ و مقصد را انتخاب کن.</p></section>
-  <section class="panel"><div class="section-title">۳. ذخیره مسیرهای پرتکرار</div><div class="grid2"><div class="field-card"><strong>نام دلخواه مسیر</strong><input id="routeName" placeholder="مثلاً لای‌بید به اصفهان"><div class="buttons"><button onclick="saveRoute()">ذخیره مسیر فعلی</button></div><div class="small">ابتدا مبدأ و مقصد را انتخاب کن؛ بعد مسیر را ذخیره کن.</div></div><div class="field-card"><strong>مدیریت مسیرها</strong><div class="buttons"><button class="outline" onclick="exportCSV()">خروجی CSV از مسیرهای ذخیره‌شده</button><button class="red" onclick="clearSavedRoutes()">حذف همه مسیرهای ذخیره‌شده</button></div><div class="small">مسیرها فقط در مرورگر همین دستگاه ذخیره می‌شوند؛ با پاک‌کردن داده‌های مرورگر ممکن است حذف شوند.</div></div></div><div id="savedRoutes" class="route-list" style="margin-top:12px"></div></section>
 
   <section class="panel">
     <div class="section-title">۵. بررسی مختصات واقعی باربرگ در اکسل</div>
@@ -384,26 +382,22 @@ def validate_route():
     except (requests.RequestException, ValueError, KeyError, TypeError):
         pass
 
-    # General-purpose preliminary check for any Iranian city: compare normalized
-    # reverse-geocoded city labels. This is a heuristic, not a legal boundary test.
-    def normalize_place(value):
-        value = str(value or '').strip().replace('ي', 'ی').replace('ك', 'ک')
-        for word in ('شهر ', 'شهرستان ', 'بخش ', 'دهستان '):
-            value = value.replace(word, '')
-        return ''.join(value.split()).lower()
-
-    origin_key = normalize_place(city_origin)
-    destination_key = normalize_place(city_destination)
-    if origin_key and destination_key and origin_key == destination_key:
-        result = 'سازگار اولیه'
-        reason = 'نام محدودهٔ مبدأ و مقصد یکسان است و مسیر جاده‌ای بررسی شد. این بررسی اولیه است و تأیید رسمی یا بررسی قطعی مرز شهری محسوب نمی‌شود.'
-    elif not origin_key or not destination_key:
+    boundary = _load_amol_boundary()
+    if boundary is None:
         result = 'نیازمند بررسی'
-        reason = 'نام محدودهٔ یکی از نقاط از سرویس نقشه قابل تشخیص نبود؛ داخل بودن هر دو نقطه در یک شهر تأیید نشد.'
+        reason = 'مرز نقشه‌ای آمل از سرویس عمومی دریافت نشد؛ برای جلوگیری از نتیجه اشتباه، داخل یا خارج بودن نقاط تأیید نشد. دوباره تلاش کن.'
     else:
-        result = 'نیازمند بررسی'
-        reason = 'نام محدودهٔ مبدأ و مقصد متفاوت است؛ لازم است محدودهٔ شهری هر دو نقطه بررسی شود.'
-
+        origin_inside = _point_in_amol(olon, olat, boundary)
+        destination_inside = _point_in_amol(dlon, dlat, boundary)
+        if origin_inside and destination_inside:
+            result = 'داخل محدوده نقشه‌ای آمل'
+            reason = 'هر دو نقطه بر اساس مرز ثبت‌شده در OpenStreetMap داخل محدوده نقشه‌ای آمل قرار دارند. این بررسی جایگزین مرز رسمی شهرداری یا تأیید سامانه باربرگ نیست.'
+        elif not origin_inside and not destination_inside:
+            result = 'نیازمند بررسی'
+            reason = 'هر دو نقطه خارج از مرز نقشه‌ای انتخاب‌شده برای شهر آمل هستند؛ این نتیجه به معنی رد رسمی باربرگ نیست.'
+        else:
+            result = 'نیازمند بررسی'
+            reason = 'یکی از نقاط داخل و دیگری خارج از مرز نقشه‌ای آمل قرار دارد؛ این نتیجه تأیید رسمی باربرگ نیست.'
     return jsonify(result=result, reason=reason, city_origin=city_origin, city_destination=city_destination,
                    road_km=road_km, duration_min=duration_min)
 
