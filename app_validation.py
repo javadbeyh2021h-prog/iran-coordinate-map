@@ -90,7 +90,16 @@ async function validateCurrentRoute(){
   if(!validPoint(points.origin)||!validPoint(points.destination)){status.textContent='ابتدا مبدأ و مقصد را انتخاب کن.';return;}
   status.textContent='در حال بررسی نام محدوده و فاصله مسیر...';
   try{
-    const response=await fetch('/validate_route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({origin:points.origin,destination:points.destination})});
+    const response=await fetch('/validate_route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+  origin: {
+    lat: points.origin.lat,
+    lng: points.origin.lng
+  },
+  destination: {
+    lat: points.destination.lat,
+    lng: points.destination.lng
+  }
+}):points.destination})});
     const data=await response.json();
     if(!response.ok)throw Error(data.error||'بررسی ناموفق بود.');
     status.textContent='نتیجه: '+data.result+' — '+data.reason+(data.city_origin?' نام محدوده مبدأ: '+data.city_origin+'.':'')+(data.city_destination?' نام محدوده مقصد: '+data.city_destination+'.':'')+(data.road_km!==null&&data.road_km!==undefined?' فاصله جاده‌ای تقریبی: '+Number(data.road_km).toLocaleString('fa-IR',{maximumFractionDigits:1})+' کیلومتر.':'')+' این نتیجه تأیید رسمی نیست.';
