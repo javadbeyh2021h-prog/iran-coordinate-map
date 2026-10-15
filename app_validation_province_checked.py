@@ -44,13 +44,22 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 .map-card{padding:12px;height:calc(100vh - 120px);min-height:530px;position:sticky;top:20px}#map{width:100%;height:100%;min-height:500px;border-radius:14px}
 .legend{font-size:12px;color:var(--muted);margin:8px 4px 0}
 .poster-wrap{max-width:1000px;margin:20px auto 0;padding:0 15px;text-align:center}.poster-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:0 10px 25px -5px #0000000d}.poster-title{font-weight:900;color:var(--primary);margin:0 0 12px;font-size:18px}.poster-image{display:block;width:100%;max-width:520px;height:auto;margin:0 auto;border-radius:12px;box-shadow:0 8px 24px #0002}.poster-caption{font-size:12px;color:var(--muted);margin:10px 0 0}
-.game-wrap{max-width:900px;margin:20px auto;padding:0 15px 30px}.game-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 10px 25px -5px #0000000d}.game-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.game-title{font-size:17px;font-weight:900;margin:0}.game-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.game-score{background:#f1f5f9;border-radius:9px;padding:8px 12px;font-weight:900}.game-btn{background:#2563eb;color:white;padding:10px 15px}.game-board-wrap{margin-top:14px;background:#0f172a;border-radius:14px;padding:8px;overflow:hidden}#snake-board{display:block;width:100%;max-width:640px;margin:auto;background:#111827;border-radius:8px;touch-action:none}.game-help{font-size:12px;color:var(--muted);line-height:1.9;margin:10px 0 0}.game-pad{display:grid;grid-template-columns:repeat(3,54px);gap:6px;justify-content:center;margin-top:12px}.game-pad button{background:#e2e8f0;color:#0f172a;padding:12px 0;font-size:18px}.game-pad button:nth-child(1){grid-column:2}.game-pad button:nth-child(2){grid-column:1;grid-row:2}.game-pad button:nth-child(3){grid-column:2;grid-row:2}.game-pad button:nth-child(4){grid-column:3;grid-row:2}
+.hidden{display:none!important}.dash-wrap{max-width:1100px;margin:28px auto;padding:0 16px 35px}.dash-welcome{padding:26px;border-radius:22px;background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;box-shadow:0 14px 32px #1e40af20}.dash-welcome h2{margin:0 0 8px;font-size:26px}.dash-welcome p{margin:0;line-height:1.9;color:#e0f2fe}.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-top:22px}.dash-tile{display:block;text-align:right;background:#fff;border:1px solid var(--border);border-radius:20px;padding:22px;min-height:190px;box-shadow:0 10px 25px -8px #0000000d;transition:transform .15s,box-shadow .15s}.dash-tile:hover{transform:translateY(-3px);box-shadow:0 16px 30px -8px #0002}.tile-icon{font-size:38px;display:block;margin-bottom:12px}.dash-tile strong{display:block;font-size:18px;margin-bottom:7px;color:#0f172a}.dash-tile span:last-child{display:block;color:#64748b;font-size:13px;line-height:1.8}.top-actions{max-width:1400px;margin:14px auto 0;padding:0 15px}.back-btn{background:#e2e8f0;color:#0f172a;padding:10px 15px}.page-heading{display:flex;align-items:center;gap:12px;margin:0 0 14px}.page-heading h2{font-size:18px;margin:0}.game-wrap{max-width:900px;margin:20px auto;padding:0 15px 30px}.game-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 10px 25px -5px #0000000d}.game-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.game-title{font-size:17px;font-weight:900;margin:0}.game-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.game-score{background:#f1f5f9;border-radius:9px;padding:8px 12px;font-weight:900}.game-btn{background:#2563eb;color:white;padding:10px 15px}.game-board-wrap{margin-top:14px;background:#0f172a;border-radius:14px;padding:8px;overflow:hidden}#snake-board{display:block;width:100%;max-width:640px;margin:auto;background:#111827;border-radius:8px;touch-action:none}.game-help{font-size:12px;color:var(--muted);line-height:1.9;margin:10px 0 0}.game-pad{display:grid;grid-template-columns:repeat(3,54px);gap:6px;justify-content:center;margin-top:12px}.game-pad button{background:#e2e8f0;color:#0f172a;padding:12px 0;font-size:18px}.game-pad button:nth-child(1){grid-column:2}.game-pad button:nth-child(2){grid-column:1;grid-row:2}.game-pad button:nth-child(3){grid-column:2;grid-row:2}.game-pad button:nth-child(4){grid-column:3;grid-row:2}
 @media(max-width:991px){main{grid-template-columns:1fr}.map-card{position:static;height:55vh;min-height:400px}#map{min-height:375px}.live{position:static;transform:none;display:inline-block;margin-top:10px}}
 </style>
 </head>
 <body>
-<header><span class="live">● سرویس مسیریابی</span><h1>دالاهو</h1><p class="subtitle">انتخاب مبدأ و مقصد، محاسبه فاصله جاده‌ای و بررسی تقریبی محدوده</p></header>
-
+<header><span class="live">● دالاهو</span><h1>دالاهو</h1><p class="subtitle" id="site-subtitle">داشبورد ابزارها و سرگرمی‌های دالاهو</p></header>
+<section id="dashboard" class="dash-wrap">
+ <div class="dash-welcome"><h2>به دالاهو خوش آمدید 👋</h2><p>از این داشبورد ابزار موردنظرتان را انتخاب کنید. نقشه و بازی مار هرکدام در صفحه جداگانه باز می‌شوند.</p></div>
+ <div class="dash-grid">
+  <button class="dash-tile" type="button" data-open="route-page"><span class="tile-icon">🗺️</span><strong>نقشه مسیر ایران</strong><span>انتخاب مبدأ و مقصد، محاسبه مسیر و کپی مختصات</span></button>
+  <button class="dash-tile" type="button" data-open="game-page"><span class="tile-icon">🐍</span><strong>بازی مار دالاهو</strong><span>بازی کن، خوراکی جمع کن و رکورد امتیازت را بالا ببر</span></button>
+ </div>
+</section>
+<div id="page-actions" class="top-actions hidden"><button type="button" class="back-btn" id="back-dashboard">← بازگشت به داشبورد</button></div>
+<div id="route-page" class="page hidden">
+<div class="top-actions"><div class="page-heading"><h2>🗺️ نقشه مسیر ایران</h2></div></div>
 <main>
 <section class="card">
  <div class="section-title">🏙️ ۱. شهر خود را پیدا کنید</div>
@@ -66,6 +75,8 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 </section>
 <section class="card map-card"><div id="map"></div></section>
 </main>
+</div>
+<div id="game-page" class="page hidden">
 <section class="game-wrap">
  <div class="game-card">
   <div class="game-head"><h2 class="game-title">🐍 بازی مار دالاهو</h2><div class="game-tools"><span class="game-score">امتیاز: <span id="snake-score">۰</span></span><button class="game-btn" id="snake-start">شروع / بازی دوباره</button></div></div>
@@ -74,8 +85,13 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
   <div class="game-pad" aria-label="کنترل لمسی بازی"><button type="button" data-dir="up" aria-label="بالا">⬆️</button><button type="button" data-dir="left" aria-label="چپ">⬅️</button><button type="button" data-dir="down" aria-label="پایین">⬇️</button><button type="button" data-dir="right" aria-label="راست">➡️</button></div>
  </div>
 </section>
+</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page'), pageActions=$('page-actions');
+function openPage(id){dashboard.classList.add('hidden');routePage.classList.toggle('hidden',id!=='route-page');gamePage.classList.toggle('hidden',id!=='game-page');pageActions.classList.remove('hidden');$('site-subtitle').textContent=id==='route-page'?'انتخاب مبدأ و مقصد و محاسبه مسیر جاده‌ای': 'بازی مار دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}}
+document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.open)));
+$('back-dashboard').addEventListener('click',()=>{routePage.classList.add('hidden');gamePage.classList.add('hidden');pageActions.classList.add('hidden');dashboard.classList.remove('hidden');$('site-subtitle').textContent='داشبورد ابزارها و سرگرمی‌های دالاهو'});
 const map=L.map('map').setView([35.6892,51.3890],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
 let origin=null,dest=null,originMarker=null,destMarker=null,routeLayer=null,cityCenter=null;
