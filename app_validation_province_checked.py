@@ -250,7 +250,7 @@ async function generateCoordinatesExcel(){
     if(!response.ok){let msg='ساخت مختصات ناموفق بود.';try{const j=await response.json();msg=j.error||msg}catch(e){}throw Error(msg)}
     const blob=await response.blob(), url=URL.createObjectURL(blob);
     link.href=url;link.download=file.name.toLowerCase().endsWith('.xlsm')?'barbarg_coordinates_updated.xlsm':'barbarg_coordinates_updated.xlsx';link.classList.remove('hidden');
-    status.textContent='فایل آماده است؛ فقط مختصات ستون‌های I تا L تغییر کرده و بقیه اطلاعات اکسل حفظ شده‌اند. فاصله مستقیم هدف حداقل ۲۵ کیلومتر است. نقاط با مرز نقشه‌ای استان از داده‌های OpenStreetMap بررسی می‌شوند؛ اگر کد پلاک یا مرز استان قابل تشخیص نباشد، مختصات همان ردیف بدون تغییر می‌ماند.';
+    status.textContent='فایل آماده است؛ فقط مختصات ستون‌های I تا L تغییر کرده و بقیه اطلاعات اکسل حفظ شده‌اند. فاصله مستقیم هدف ۱۵ تا ۲۲ کیلومتر است. نقاط با مرز نقشه‌ای استان از داده‌های OpenStreetMap بررسی می‌شوند؛ اگر کد پلاک یا مرز استان قابل تشخیص نباشد، مختصات همان ردیف بدون تغییر می‌ماند.';
   }catch(e){status.textContent='خطا: '+e.message;}
 }
 
@@ -419,7 +419,9 @@ def _point_inside_geometry(lon, lat, geometry):
                 return True
     return False
 
-def make_pair_in_province(province, minimum_km=25):
+def make_pair_in_province(province, minimum_km=15, maximum_km=22):
+    # Keep both points near one city and limit straight-line distance,
+    # reducing the chance of generating very long road routes.
     iso = PROVINCE_ISO.get(province)
     features = load_province_boundaries()
     if not iso or not features:
@@ -428,6 +430,22 @@ def make_pair_in_province(province, minimum_km=25):
     if not feature:
         return None
     geometry = feature.get('geometry') or {}
+
+    cities = list(PROVINCE_CITIES.get(province, []))
+    random.shuffle(cities)
+    for city in cities:
+        name, lat, lon, radius = city
+        for _ in range(1800):
+            a = (lat + random.uniform(-radius, radius), lon + random.uniform(-radius, radius))
+            b = (lat + random.uniform(-radius, radius), lon + random.uniform(-radius, radius))
+            if not (_point_inside_geometry(a[1], a[0], geometry) and
+                    _point_inside_geometry(b[1], b[0], geometry)):
+                continue
+            distance = straight_distance_km(a, b)
+            if minimum_km <= distance <= maximum_km:
+                return a, b, distance, name
+
+    # Fallback to other points inside the province, still limited to 15–22 km.
     coords = []
     for ring in _all_rings(geometry):
         coords.extend((float(pt[0]), float(pt[1])) for pt in ring if len(pt) >= 2)
@@ -435,14 +453,14 @@ def make_pair_in_province(province, minimum_km=25):
         return None
     min_lon = min(pt[0] for pt in coords); max_lon = max(pt[0] for pt in coords)
     min_lat = min(pt[1] for pt in coords); max_lat = max(pt[1] for pt in coords)
-    for _ in range(12000):
+    for _ in range(30000):
         a = (random.uniform(min_lat, max_lat), random.uniform(min_lon, max_lon))
         b = (random.uniform(min_lat, max_lat), random.uniform(min_lon, max_lon))
         if not (_point_inside_geometry(a[1], a[0], geometry) and
                 _point_inside_geometry(b[1], b[0], geometry)):
             continue
         distance = straight_distance_km(a, b)
-        if distance >= minimum_km:
+        if minimum_km <= distance <= maximum_km:
             return a, b, distance, province
     return None
 
@@ -671,7 +689,7 @@ def generate_coordinates_excel():
     """Keep the uploaded workbook intact and update only I:L coordinate cells.
 
     Q is read for the two-digit plate code. I/J are origin latitude/longitude;
-    K/L are destination latitude/longitude. Points are generated inside the mapped provincial boundary and at least 15 km apart in straight-line distance; this is not official Barbarg approval.
+    K/L are destination latitude/longitude. Points are generated inside the mapped provincial boundary and 15–22 km apart in straight-line distance, preferably near the same city; this is not official Barbarg approval.
     """
     if 'file' not in request.files or not request.files['file'].filename:
         return jsonify(error='فایل اکسل انتخاب نشده است.'), 400
@@ -697,7 +715,7 @@ def generate_coordinates_excel():
             digits = re.findall(r'\d', normalized)
             code = int(''.join(digits[-2:])) if len(digits) >= 2 else None
             province = PLATE_PROVINCES.get(code) if code is not None else None
-            pair = make_pair_in_province(province, minimum_km=15) if province else None
+            pair = make_pair_in_province(province, minimum_km=15, maximum_km=22) if province else None
             if not pair:
                 # Leave the original I:L values unchanged when code/pair is unknown.
                 failed += 1
