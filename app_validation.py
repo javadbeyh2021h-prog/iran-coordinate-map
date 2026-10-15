@@ -73,8 +73,8 @@ HTML = r'''<!DOCTYPE html>
     <div class="field-card">
       <strong>فایل Excel باربرگ</strong>
       <input id="excelFile" type="file" accept=".xlsx,.xlsm">
-      <div class="buttons"><button onclick="processExcel()">بررسی مختصات و دریافت گزارش</button></div>
-      <p class="status" id="excelStatus">ستون‌های I تا L: مختصات واقعی مبدأ و مقصد؛ مختصات اصلی حفظ می‌شوند.</p>
+      <div class="buttons"><button onclick="processExcel()">بررسی مختصات موجود و دریافت گزارش</button><button class="green" onclick="generateCoordinatesExcel()">ساخت مختصات جدید از روی کد پلاک ستون Q</button></div>
+      <p class="status" id="excelStatus">برای بررسی، مختصات I تا L حفظ می‌شوند. برای ساخت مختصات جدید، کد پلاک دو رقمی ستون Q خوانده می‌شود.</p>
       <a id="excelDownload" class="hidden" style="display:inline-block;margin-top:8px;color:var(--primary);font-weight:bold" href="#">دانلود فایل آماده‌شده</a>
     </div>
   </section>
@@ -190,6 +190,22 @@ async function processExcel(){
     const blob=await response.blob(), url=URL.createObjectURL(blob);
     link.href=url;link.download='barbarg_coordinate_review.xlsx';link.classList.remove('hidden');
     status.textContent='گزارش آماده شد. مختصات و ستون‌های اصلی حفظ شده‌اند و نتیجه بررسی به انتهای فایل اضافه شده است.';
+  }catch(e){status.textContent='خطا: '+e.message;}
+}
+
+async function generateCoordinatesExcel(){
+  const file=document.getElementById('excelFile').files[0];
+  const status=document.getElementById('excelStatus'), link=document.getElementById('excelDownload');
+  link.classList.add('hidden');
+  if(!file){status.textContent='اول فایل اکسل را انتخاب کن.';return;}
+  const form=new FormData();form.append('file',file);
+  status.textContent='در حال ساخت مختصات جدید بر اساس کد پلاک ستون Q...';
+  try{
+    const response=await fetch('/generate_coordinates_excel',{method:'POST',body:form});
+    if(!response.ok){let msg='ساخت مختصات ناموفق بود.';try{const j=await response.json();msg=j.error||msg}catch(e){}throw Error(msg)}
+    const blob=await response.blob(), url=URL.createObjectURL(blob);
+    link.href=url;link.download='barbarg_generated_coordinates.xlsx';link.classList.remove('hidden');
+    status.textContent='فایل مختصات جدید آماده است. ردیف‌های دارای کد پلاک ناشناخته در گزارش مشخص شده‌اند.';
   }catch(e){status.textContent='خطا: '+e.message;}
 }
 
@@ -484,6 +500,67 @@ def validate_route():
             reason = 'یکی از نقاط داخل و دیگری خارج از مرز نقشه‌ای آمل قرار دارد؛ این نتیجه تأیید رسمی باربرگ نیست.'
     return jsonify(result=result, reason=reason, city_origin=city_origin, city_destination=city_destination,
                    road_km=road_km, duration_min=duration_min)
+
+
+@app.route('/generate_coordinates_excel', methods=['POST'])
+def generate_coordinates_excel():
+    """Create a separate coordinate workbook using the two-digit plate code in column Q.
+
+    Coordinates are approximate randomized points around a selected seed city, not verified
+    municipal-boundary points and not a guarantee of Barbarg acceptance.
+    """
+    if 'file' not in request.files or not request.files['file'].filename:
+        return jsonify(error='فایل اکسل انتخاب نشده است.'), 400
+    file = request.files['file']
+    filename = file.filename.lower()
+    if not filename.endswith(('.xlsx', '.xlsm')):
+        return jsonify(error='لطفاً فایل xlsx یا xlsm انتخاب کن.'), 400
+    try:
+        source_wb = load_workbook(file, data_only=True, read_only=True)
+        source_ws = source_wb.active
+        if source_ws.max_column < 17:
+            source_wb.close()
+            return jsonify(error='ستون Q در فایل پیدا نشد. فایل باید ستون «کد پلاک» را در ستون Q داشته باشد.'), 400
+        output_wb = Workbook()
+        output_ws = output_wb.active
+        output_ws.title = 'مختصات تولیدشده'
+        output_ws.append(['کد پلاک (ستون Q)', 'استان تخمینی از کد', 'شهر نمونه', 'عرض مبدأ', 'طول مبدأ', 'عرض مقصد', 'طول مقصد', 'فاصله مستقیم (کیلومتر)', 'وضعیت / توضیح'])
+        generated = 0
+        for row_num in range(2, source_ws.max_row + 1):
+            raw_code = source_ws.cell(row_num, 17).value
+            normalized = normalize_digits(raw_code)
+            match = re.search(r'(?<!\d)(\d{2})(?!\d)', normalized)
+            code = int(match.group(1)) if match else None
+            province = PLATE_PROVINCES.get(code) if code is not None else None
+            if not province:
+                output_ws.append([raw_code, '', '', '', '', '', '', '', 'کد دو رقمی پلاک در ستون Q خوانده نشد یا در جدول کدها موجود نیست؛ این ردیف را دستی بررسی کن.'])
+                continue
+            cities = PROVINCE_CITIES.get(province, [])
+            if not cities:
+                output_ws.append([raw_code, province, '', '', '', '', '', '', 'برای این استان شهر نمونه تعریف نشده است؛ مختصات ساخته نشد.'])
+                continue
+            city = random.choice(cities)
+            pair = make_pair(city, minimum_km=20)
+            if not pair:
+                output_ws.append([raw_code, province, city[0], '', '', '', '', '', 'ساخت دو نقطه با فاصله حداقل ۲۰ کیلومتر ممکن نشد؛ دوباره تلاش کن یا دستی بررسی کن.'])
+                continue
+            a, b, distance, city_name = pair
+            # Six decimals are useful for mapping but do not imply survey-grade accuracy.
+            output_ws.append([raw_code, province, city_name, round(a[0], 6), round(a[1], 6), round(b[0], 6), round(b[1], 6), round(distance, 2), 'مختصات تقریبی تصادفی در پیرامون شهر نمونه؛ فاصله مستقیم حداقل ۲۰ کیلومتر است. مرز رسمی شهر و تأیید باربرگ تضمین نشده است.'])
+            generated += 1
+        source_wb.close()
+        output_ws.freeze_panes = 'A2'
+        output_ws.auto_filter.ref = output_ws.dimensions
+        widths = [22, 25, 20, 16, 16, 16, 16, 24, 72]
+        for idx, width in enumerate(widths, 1):
+            output_ws.column_dimensions[__import__('openpyxl').utils.get_column_letter(idx)].width = width
+        output = BytesIO()
+        output_wb.save(output)
+        output_wb.close()
+        output.seek(0)
+        return send_file(output, as_attachment=True, download_name='barbarg_generated_coordinates.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        return jsonify(error='ساخت فایل مختصات انجام نشد. بررسی کن ستون Q واقعاً کد پلاک دارد و فایل سالم است. جزئیات: ' + str(e)), 500
 
 
 @app.route('/process_excel', methods=['POST'])
