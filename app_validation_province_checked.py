@@ -46,15 +46,17 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 .poster-wrap{max-width:1000px;margin:20px auto 0;padding:0 15px;text-align:center}.poster-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:0 10px 25px -5px #0000000d}.poster-title{font-weight:900;color:var(--primary);margin:0 0 12px;font-size:18px}.poster-image{display:block;width:100%;max-width:520px;height:auto;margin:0 auto;border-radius:12px;box-shadow:0 8px 24px #0002}.poster-caption{font-size:12px;color:var(--muted);margin:10px 0 0}
 .hidden{display:none!important}.dash-wrap{max-width:1100px;margin:28px auto;padding:0 16px 35px}.dash-welcome{padding:26px;border-radius:22px;background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;box-shadow:0 14px 32px #1e40af20}.dash-welcome h2{margin:0 0 8px;font-size:26px}.dash-welcome p{margin:0;line-height:1.9;color:#e0f2fe}.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-top:22px}.dash-tile{display:block;text-align:right;background:#fff;border:1px solid var(--border);border-radius:20px;padding:22px;min-height:190px;box-shadow:0 10px 25px -8px #0000000d;transition:transform .15s,box-shadow .15s}.dash-tile:hover{transform:translateY(-3px);box-shadow:0 16px 30px -8px #0002}.tile-icon{font-size:38px;display:block;margin-bottom:12px}.dash-tile strong{display:block;font-size:18px;margin-bottom:7px;color:#0f172a}.dash-tile span:last-child{display:block;color:#64748b;font-size:13px;line-height:1.8}.top-actions{max-width:1400px;margin:14px auto 0;padding:0 15px}.back-btn{background:#e2e8f0;color:#0f172a;padding:10px 15px}.page-heading{display:flex;align-items:center;gap:12px;margin:0 0 14px}.page-heading h2{font-size:18px;margin:0}.game-wrap{max-width:900px;margin:20px auto;padding:0 15px 30px}.game-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 10px 25px -5px #0000000d}.game-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.game-title{font-size:17px;font-weight:900;margin:0}.game-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.game-score{background:#f1f5f9;border-radius:9px;padding:8px 12px;font-weight:900}.game-btn{background:#2563eb;color:white;padding:10px 15px}.game-board-wrap{margin-top:14px;background:#0f172a;border-radius:14px;padding:8px;overflow:hidden}#snake-board{display:block;width:100%;max-width:640px;margin:auto;background:#111827;border-radius:8px;touch-action:none}.game-help{font-size:12px;color:var(--muted);line-height:1.9;margin:10px 0 0}.game-pad{display:grid;grid-template-columns:repeat(3,54px);gap:6px;justify-content:center;margin-top:12px}.game-pad button{background:#e2e8f0;color:#0f172a;padding:12px 0;font-size:18px}.game-pad button:nth-child(1){grid-column:2}.game-pad button:nth-child(2){grid-column:1;grid-row:2}.game-pad button:nth-child(3){grid-column:2;grid-row:2}.game-pad button:nth-child(4){grid-column:3;grid-row:2}
 @media(max-width:991px){main{grid-template-columns:1fr}.map-card{position:static;height:55vh;min-height:400px}#map{min-height:375px}.live{position:static;transform:none;display:inline-block;margin-top:10px}}
+ 
+.pasoor-area{margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:16px;background:#f8fafc}.pasoor-area h3{margin:0 0 12px}.pasoor-cards{display:flex;flex-wrap:wrap;gap:9px;min-height:80px;align-items:center}.playing-card{width:64px;height:92px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;border-radius:10px;box-shadow:0 4px 10px #0f172a14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:19px;padding:5px}.playing-card b{font-size:25px}.playing-card.red-card{color:#dc2626}.playing-card:hover{transform:translateY(-4px);box-shadow:0 8px 16px #0f172a22}.game-board-wrap canvas{max-width:100%;height:auto;border-radius:16px}
 </style>
 </head>
 <body>
 <header><span class="live">● دالاهو</span><h1>دالاهو</h1><p class="subtitle" id="site-subtitle">داشبورد ابزارها و سرگرمی‌های دالاهو</p></header>
 <section id="dashboard" class="dash-wrap">
- <div class="dash-welcome"><h2>به دالاهو خوش آمدید 👋</h2><p>از این داشبورد ابزار موردنظرتان را انتخاب کنید. نقشه و بازی مار هرکدام در صفحه جداگانه باز می‌شوند.</p></div>
+ <div class="dash-welcome"><h2>به دالاهو خوش آمدید 👋</h2><p>از این داشبورد ابزار موردنظرتان را انتخاب کنید. نقشه و بازی‌ها هرکدام در صفحه جداگانه باز می‌شوند.</p></div>
  <div class="dash-grid">
   <button class="dash-tile" type="button" data-open="route-page"><span class="tile-icon">🗺️</span><strong>نقشه مسیر ایران</strong><span>انتخاب مبدأ و مقصد، محاسبه مسیر و کپی مختصات</span></button>
-  <button class="dash-tile" type="button" data-open="game-page"><span class="tile-icon">🐍</span><strong>بازی مار دالاهو</strong><span>بازی کن، خوراکی جمع کن و رکورد امتیازت را بالا ببر</span></button>
+  <button class="dash-tile" type="button" data-open="games-page"><span class="tile-icon">🎮</span><strong>بخش بازی‌ها</strong><span>ورود به بازی مار و پاسور</span></button>
  </div>
 </section>
 <div id="page-actions" class="top-actions hidden"><button type="button" class="back-btn" id="back-dashboard">← بازگشت به داشبورد</button></div>
@@ -76,6 +78,26 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 <section class="card map-card"><div id="map"></div></section>
 </main>
 </div>
+<div id="games-page" class="page hidden">
+ <section class="game-wrap">
+  <div class="game-card">
+   <div class="game-head"><h2 class="game-title">🎮 بازی‌های دالاهو</h2></div>
+   <p class="game-help">یکی از بازی‌ها را انتخاب کن تا در صفحه جداگانه باز شود.</p>
+   <div class="dash-grid">
+    <button class="dash-tile" type="button" data-open="game-page"><span class="tile-icon">🐍</span><strong>مار کلاسیک</strong><span>سرعت، امتیاز و رکوردگیری</span></button>
+    <button class="dash-tile" type="button" data-open="pasoor-page"><span class="tile-icon">🂡</span><strong>پاسور چهاربرگ</strong><span>بازی کارتی با حریف کامپیوتری</span></button>
+   </div>
+  </div>
+ </section>
+</div>
+<div id="pasoor-page" class="page hidden">
+ <section class="game-wrap"><div class="game-card">
+  <div class="game-head"><h2 class="game-title">🂡 پاسور دالاهو</h2><div class="game-tools"><span class="game-score">امتیاز شما: <span id="pasoor-player-score">۰</span></span><span class="game-score">کامپیوتر: <span id="pasoor-ai-score">۰</span></span><button class="game-btn" id="pasoor-new">دست جدید</button></div></div>
+  <p class="game-help" id="pasoor-message">کارت خودت را انتخاب کن. این نسخه ساده‌شده‌ی چهاربرگ است: کارت هم‌رتبه یا ترکیب‌هایی با مجموع ۱۱ را جمع کن.</p>
+  <div class="pasoor-area"><h3>کارت‌های روی زمین</h3><div id="pasoor-table" class="pasoor-cards"></div></div>
+  <div class="pasoor-area"><h3>کارت‌های شما (روی یک کارت بزن)</h3><div id="pasoor-hand" class="pasoor-cards"></div></div>
+ </div></section>
+</div>
 <div id="game-page" class="page hidden">
 <section class="game-wrap">
  <div class="game-card">
@@ -89,10 +111,11 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page'), pageActions=$('page-actions');
-function openPage(id){dashboard.classList.add('hidden');routePage.classList.toggle('hidden',id!=='route-page');gamePage.classList.toggle('hidden',id!=='game-page');pageActions.classList.remove('hidden');$('site-subtitle').textContent=id==='route-page'?'انتخاب مبدأ و مقصد و محاسبه مسیر جاده‌ای': 'بازی مار دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}}
+const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page'), gamesPage=$('games-page'), pasoorPage=$('pasoor-page'), pageActions=$('page-actions');
+const appPages=[routePage,gamePage,gamesPage,pasoorPage];
+function openPage(id){dashboard.classList.add('hidden');appPages.forEach(p=>p.classList.toggle('hidden',p.id!==id));pageActions.classList.remove('hidden');const labels={'route-page':'نقشه مسیر ایران','games-page':'انتخاب بازی','game-page':'بازی مار کلاسیک','pasoor-page':'پاسور دالاهو'};$('site-subtitle').textContent=labels[id]||'دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}if(id==='pasoor-page'&&!pasoorStarted){pasoorNewGame()}}
 document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.open)));
-$('back-dashboard').addEventListener('click',()=>{routePage.classList.add('hidden');gamePage.classList.add('hidden');pageActions.classList.add('hidden');dashboard.classList.remove('hidden');$('site-subtitle').textContent='داشبورد ابزارها و سرگرمی‌های دالاهو'});
+$('back-dashboard').addEventListener('click',()=>{appPages.forEach(p=>p.classList.add('hidden'));pageActions.classList.add('hidden');dashboard.classList.remove('hidden');$('site-subtitle').textContent='داشبورد ابزارها و سرگرمی‌های دالاهو'});
 const map=L.map('map').setView([35.6892,51.3890],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
 let origin=null,dest=null,originMarker=null,destMarker=null,routeLayer=null,cityCenter=null;
@@ -170,17 +193,29 @@ $('copy-all').onclick=()=>{if(origin&&dest)copyText([origin.lat.toFixed(6),origi
 $('reset').onclick=()=>{origin=dest=null;nextPoint='origin';cityCenter=null;[originMarker,destMarker,routeLayer].forEach(x=>{if(x)map.removeLayer(x)});originMarker=destMarker=routeLayer=null;$('city-search').value='';$('origin-info').style.display='none';$('dest-info').style.display='none';$('result').style.display='none';$('copy-message').textContent='';updateCopyButtons();map.invalidateSize()};
 updateCopyButtons();
 
+// پاسور چهاربرگ ساده‌شده با حریف کامپیوتری
+let pasoorStarted=false, pDeck=[], pHand=[], pTable=[], pPlayerScore=0, pAiScore=0, pBusy=false;
+const suits=['♠','♥','♦','♣'], ranks=[{v:1,t:'A'},{v:2,t:'2'},{v:3,t:'3'},{v:4,t:'4'},{v:5,t:'5'},{v:6,t:'6'},{v:7,t:'7'},{v:8,t:'8'},{v:9,t:'9'},{v:10,t:'10'},{v:11,t:'J'},{v:12,t:'Q'},{v:13,t:'K'}];
+function pShuffle(){pDeck=[];for(const su of suits)for(const r of ranks)pDeck.push({s:su,v:r.v,t:r.t,id:su+r.t});for(let i=pDeck.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[pDeck[i],pDeck[j]]=[pDeck[j],pDeck[i]]}}
+function pCard(c){return `<button type="button" class="playing-card ${c.s==='♥'||c.s==='♦'?'red-card':''}" data-card="${c.id}"><span>${c.t}</span><b>${c.s}</b></button>`}
+function pRender(){$('pasoor-table').innerHTML=pTable.map(pCard).join('')||'<span class="game-help">زمین خالی است</span>';$('pasoor-hand').innerHTML=pHand.map(pCard).join('');$('pasoor-player-score').textContent=pPlayerScore.toLocaleString('fa-IR');$('pasoor-ai-score').textContent=pAiScore.toLocaleString('fa-IR');document.querySelectorAll('#pasoor-hand [data-card]').forEach(b=>b.addEventListener('click',()=>pPlay(b.dataset.card)))}
+function pasoorNewGame(){pasoorStarted=true;pShuffle();pHand=pDeck.splice(0,4);pTable=pDeck.splice(0,4);pPlayerScore=0;pAiScore=0;pBusy=false;$('pasoor-message').textContent='کارتت را انتخاب کن؛ کارت هم‌رتبه یا چند کارت با مجموع ۱۱ را جمع کن.';pRender()}
+function pCombos(target,need){const out=[];function walk(i,sum,arr){if(sum===target){out.push(arr.slice());return}if(sum>target||i>=pTable.length||arr.length>=need)return;for(let j=i;j<pTable.length;j++)walk(j+1,sum+pTable[j].v,[...arr,j])}walk(0,0,[]);return out}
+function pPlay(id){if(pBusy)return;const idx=pHand.findIndex(c=>c.id===id);if(idx<0)return;const c=pHand[idx];let picks=[];const same=pTable.findIndex(x=>x.v===c.v);if(same>=0)picks=[same];else if(c.v<=10){const combos=pCombos(11-c.v,4);if(combos.length)picks=combos[0]}if(picks.length){const captured=[c,...picks.map(i=>pTable[i])];pTable=pTable.filter((_,i)=>!picks.includes(i));pPlayerScore+=captured.length; if(!pTable.length)pPlayerScore+=1;$('pasoor-message').textContent=picks.length===1&&pTable.length===0?'جمع کردی! زمین را خالی کردی.':'کارت‌ها جمع شدند؛ نوبت کامپیوتر.'}else{pTable.push(c);$('pasoor-message').textContent='کارت روی زمین گذاشته شد؛ نوبت کامپیوتر.'}pHand.splice(idx,1);pRender();pBusy=true;setTimeout(()=>{if(pDeck.length)pHand.push(pDeck.shift());if(pHand.length===0&&pDeck.length===0){$('pasoor-message').textContent='این دست تمام شد! امتیازها: شما '+pPlayerScore+'، کامپیوتر '+pAiScore+'. برای دست جدید بزن.';pBusy=false;pRender();return}pAiMove();pBusy=false;pRender();if(pHand.length===0&&pDeck.length===0)$('pasoor-message').textContent='دست تمام شد! امتیاز شما '+pPlayerScore+' و کامپیوتر '+pAiScore+'.';},450)}
+function pAiMove(){if(!pHand.length)return;const c=pHand.shift();let i=pTable.findIndex(x=>x.v===c.v);if(i>=0){pTable.splice(i,1);pAiScore+=2}else if(c.v<=10){const comb=pCombos(11-c.v,4);if(comb.length){const chosen=comb[0].slice().sort((a,b)=>b-a);chosen.forEach(k=>pTable.splice(k,1));pAiScore+=chosen.length+1}else pTable.push(c)}else pTable.push(c)}
+$('pasoor-new').addEventListener('click',pasoorNewGame);
 // بازی مار مستقل از نقشه
 const snakeCanvas=$('snake-board'), snakeCtx=snakeCanvas.getContext('2d');
 const CELL=20, COLS=snakeCanvas.width/CELL, ROWS=snakeCanvas.height/CELL;
 let snake=[], snakeDir={x:1,y:0}, snakeNext={x:1,y:0}, snakeFood={x:10,y:8}, snakeScore=0, snakeTimer=null, snakeRunning=false;
 function snakeFoodNew(){do{snakeFood={x:Math.floor(Math.random()*COLS),y:Math.floor(Math.random()*ROWS)}}while(snake.some(p=>p.x===snakeFood.x&&p.y===snakeFood.y))}
 function snakeDraw(){
- snakeCtx.fillStyle='#111827';snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
- snakeCtx.strokeStyle='#1f2937';snakeCtx.lineWidth=1;for(let x=0;x<=COLS;x++){snakeCtx.beginPath();snakeCtx.moveTo(x*CELL,0);snakeCtx.lineTo(x*CELL,snakeCanvas.height);snakeCtx.stroke()}for(let y=0;y<=ROWS;y++){snakeCtx.beginPath();snakeCtx.moveTo(0,y*CELL);snakeCtx.lineTo(snakeCanvas.width,y*CELL);snakeCtx.stroke()}
- snakeCtx.fillStyle='#f97316';snakeCtx.beginPath();snakeCtx.arc(snakeFood.x*CELL+CELL/2,snakeFood.y*CELL+CELL/2,CELL*.38,0,Math.PI*2);snakeCtx.fill();
- snake.forEach((p,i)=>{snakeCtx.fillStyle=i===0?'#34d399':'#10b981';snakeCtx.fillRect(p.x*CELL+2,p.y*CELL+2,CELL-4,CELL-4)});
- if(!snakeRunning){snakeCtx.fillStyle='#ffffff';snakeCtx.font='bold 24px sans-serif';snakeCtx.textAlign='center';snakeCtx.fillText(snake.length?'بازی تمام شد!':'برای شروع کلیک کن',snakeCanvas.width/2,snakeCanvas.height/2)}
+ snakeCtx.clearRect(0,0,snakeCanvas.width,snakeCanvas.height);
+ const bg=snakeCtx.createLinearGradient(0,0,snakeCanvas.width,snakeCanvas.height);bg.addColorStop(0,'#071b2b');bg.addColorStop(1,'#102b3d');snakeCtx.fillStyle=bg;snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+ snakeCtx.strokeStyle='rgba(125,211,252,.09)';snakeCtx.lineWidth=1;for(let x=0;x<=COLS;x++){snakeCtx.beginPath();snakeCtx.moveTo(x*CELL,0);snakeCtx.lineTo(x*CELL,snakeCanvas.height);snakeCtx.stroke()}for(let y=0;y<=ROWS;y++){snakeCtx.beginPath();snakeCtx.moveTo(0,y*CELL);snakeCtx.lineTo(snakeCanvas.width,y*CELL);snakeCtx.stroke()}
+ snakeCtx.save();snakeCtx.shadowColor='#fb7185';snakeCtx.shadowBlur=16;snakeCtx.fillStyle='#fb7185';snakeCtx.beginPath();snakeCtx.arc(snakeFood.x*CELL+CELL/2,snakeFood.y*CELL+CELL/2,CELL*.34,0,Math.PI*2);snakeCtx.fill();snakeCtx.restore();
+ snake.forEach((p,i)=>{snakeCtx.fillStyle=i===0?'#a3e635':(i%2?'#22c55e':'#10b981');snakeCtx.beginPath();snakeCtx.roundRect(p.x*CELL+2,p.y*CELL+2,CELL-4,CELL-4,6);snakeCtx.fill();if(i===0){snakeCtx.fillStyle='#082f49';snakeCtx.beginPath();snakeCtx.arc(p.x*CELL+CELL*.65,p.y*CELL+CELL*.35,2,0,Math.PI*2);snakeCtx.fill();snakeCtx.beginPath();snakeCtx.arc(p.x*CELL+CELL*.65,p.y*CELL+CELL*.65,2,0,Math.PI*2);snakeCtx.fill()}})
+ if(!snakeRunning){snakeCtx.fillStyle='rgba(2,6,23,.72)';snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);snakeCtx.fillStyle='#f8fafc';snakeCtx.font='bold 25px Vazirmatn,Tahoma,sans-serif';snakeCtx.textAlign='center';snakeCtx.fillText(snake.length?'بازی تمام شد!':'آماده‌ای؟',snakeCanvas.width/2,snakeCanvas.height/2-8);snakeCtx.font='16px Vazirmatn,Tahoma,sans-serif';snakeCtx.fillStyle='#bae6fd';snakeCtx.fillText(snake.length?'برای شروع دوباره دکمه را بزن':'شروع را بزن و حرکت کن',snakeCanvas.width/2,snakeCanvas.height/2+25)}
 }
 function snakeStart(){clearInterval(snakeTimer);snake=[{x:Math.floor(COLS/2),y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-1,y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-2,y:Math.floor(ROWS/2)}];snakeDir={x:1,y:0};snakeNext={x:1,y:0};snakeScore=0;snakeRunning=true;$('snake-score').textContent='۰';$('snake-message').textContent='عالیه! خوراکی‌ها را بخور و به دیوار یا بدن خودت برخورد نکن.';snakeFoodNew();snakeDraw();snakeTimer=setInterval(snakeStep,115)}
 function snakeStep(){if(!snakeRunning)return;snakeDir=snakeNext;const head={x:snake[0].x+snakeDir.x,y:snake[0].y+snakeDir.y};if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some((p,i)=>i<snake.length-1&&p.x===head.x&&p.y===head.y)){snakeRunning=false;clearInterval(snakeTimer);$('snake-message').textContent='بازی تمام شد! امتیاز شما: '+snakeScore+' — برای شروع دوباره دکمه را بزن.';snakeDraw();return}snake.unshift(head);if(head.x===snakeFood.x&&head.y===snakeFood.y){snakeScore++;$('snake-score').textContent=snakeScore.toLocaleString('fa-IR');snakeFoodNew()}else snake.pop();snakeDraw()}
