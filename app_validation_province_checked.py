@@ -1,6 +1,7 @@
 from flask import Flask, render_template_string, request, jsonify
 import requests
 import math
+from pathlib import Path
 
 app = Flask(__name__)
 HEADERS = {"User-Agent": "DebirnetRouteDemo/1.0 (Iran route planner)"}
@@ -9,7 +10,7 @@ HTML = r"""
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>سرویس هوشمند مسیریابی دبیرنت</title>
+<title>دالاهو</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
@@ -35,21 +36,29 @@ input:focus{border-color:var(--primary);background:#fff;box-shadow:0 4px 14px #2
 .result-status{text-align:center;font-weight:800;line-height:1.8;padding-bottom:10px;border-bottom:1px solid #0001}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center}.stat{background:#ffffffb5;border:1px solid #0000000a;border-radius:10px;padding:12px}.stat strong{font-size:20px;display:block}.stat span{font-size:12px}
 button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px;padding:13px}
+.copy-btn{font-size:12px;padding:9px 11px;margin-top:10px;background:#e0f2fe;color:#075985;border:1px solid #7dd3fc}
+.copy-btn:hover:not(:disabled){background:#bae6fd}
+.copy-btn:disabled{opacity:.45;cursor:not-allowed}
+.copy-all{width:100%;margin-top:6px;background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
 .reset{width:100%;margin-top:15px;background:#475569;color:white}.reset:hover{background:#0f172a}
 .map-card{padding:12px;height:calc(100vh - 120px);min-height:530px;position:sticky;top:20px}#map{width:100%;height:100%;min-height:500px;border-radius:14px}
 .legend{font-size:12px;color:var(--muted);margin:8px 4px 0}
+.poster-wrap{max-width:1000px;margin:20px auto 0;padding:0 15px;text-align:center}.poster-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:0 10px 25px -5px #0000000d}.poster-title{font-weight:900;color:var(--primary);margin:0 0 12px;font-size:18px}.poster-image{display:block;width:100%;max-width:520px;height:auto;margin:0 auto;border-radius:12px;box-shadow:0 8px 24px #0002}.poster-caption{font-size:12px;color:var(--muted);margin:10px 0 0}
 @media(max-width:991px){main{grid-template-columns:1fr}.map-card{position:static;height:55vh;min-height:400px}#map{min-height:375px}.live{position:static;transform:none;display:inline-block;margin-top:10px}}
 </style>
 </head>
 <body>
-<header><span class="live">● سرویس مسیریابی</span><h1>سرویس هوشمند مسیریابی دبیرنت</h1><p class="subtitle">انتخاب مبدأ و مقصد، محاسبه فاصله جاده‌ای و بررسی تقریبی محدوده</p></header>
+<header><span class="live">● سرویس مسیریابی</span><h1>دالاهو</h1><p class="subtitle">انتخاب مبدأ و مقصد، محاسبه فاصله جاده‌ای و بررسی تقریبی محدوده</p></header>
+
 <main>
 <section class="card">
  <div class="section-title">🏙️ ۱. شهر خود را پیدا کنید</div>
  <div class="search-wrap"><input id="city-search" placeholder="نام شهر را تایپ کنید؛ مثال: شیراز" autocomplete="off"><div id="city-list" class="suggestions"></div></div>
  <div class="help">💡 ابتدا شهر را جست‌وجو کنید، سپس روی نقشه کلیک کنید.<br>• کلیک اول: مبدأ 📍<br>• کلیک دوم: مقصد 🏁<br><b style="color:#ef4444">توجه: بررسی شهرستان تقریبی است و تأیید رسمی باربرگ محسوب نمی‌شود.</b></div>
- <div class="info origin" id="origin-info"><div class="info-title">📍 مشخصات مبدأ</div><div id="origin-address"></div><span class="small">مختصات (Lat/Lon)</span><span class="coords" id="origin-coords"></span></div>
- <div class="info dest" id="dest-info"><div class="info-title">🏁 مشخصات مقصد</div><div id="dest-address"></div><span class="small">مختصات (Lat/Lon)</span><span class="coords" id="dest-coords"></span></div>
+ <div class="info origin" id="origin-info"><div class="info-title">📍 مشخصات مبدأ</div><div id="origin-address"></div><span class="small">مختصات (Lat/Lon)</span><span class="coords" id="origin-coords"></span><button type="button" class="copy-btn copy-origin" id="copy-origin" disabled>📋 کپی مختصات مبدأ</button></div>
+ <div class="info dest" id="dest-info"><div class="info-title">🏁 مشخصات مقصد</div><div id="dest-address"></div><span class="small">مختصات (Lat/Lon)</span><span class="coords" id="dest-coords"></span><button type="button" class="copy-btn copy-dest" id="copy-dest" disabled>📋 کپی مختصات مقصد</button></div>
+ <button type="button" class="copy-btn copy-all" id="copy-all" disabled>📋 کپی هر چهار مختصات</button>
+ <div id="copy-message" role="status" aria-live="polite" style="font-size:12px;margin-top:8px;color:#059669"></div>
  <div class="result" id="result"><div class="result-status" id="result-status"></div><div class="stats"><div class="stat"><strong><span id="dist">—</span> <span>کیلومتر</span></strong><span>مسافت جاده‌ای تقریبی</span></div><div class="stat"><strong><span id="time">—</span></strong><span>زمان تقریبی حمل</span></div></div></div>
  <button class="reset" id="reset">🔄 پاک کردن نقشه و شروع مجدد</button>
  <div class="legend">مبدأ با نشان سبز و مقصد با نشان قرمز مشخص می‌شود.</div>
@@ -68,11 +77,30 @@ async function nominatimSearch(q){const r=await fetch('https://nominatim.openstr
 async function reverse(lat,lon){const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=10&accept-language=fa&lat='+lat+'&lon='+lon);if(!r.ok)throw Error('آدرس قابل تشخیص نیست');return r.json()}
 function countyOf(a){return a.county||a.city_district||a.municipality||a.city||a.town||a.village||a.state_district||null}
 function addressOf(x){return x.display_name||'آدرس نامشخص روی نقشه'}
+function updateCopyButtons(){
+ $('copy-origin').disabled=!origin;
+ $('copy-dest').disabled=!dest;
+ $('copy-all').disabled=!(origin&&dest);
+}
+async function copyText(text){
+ const message=$('copy-message');
+ try{
+   if(navigator.clipboard && window.isSecureContext){await navigator.clipboard.writeText(text)}
+   else{
+     const temp=document.createElement('textarea');temp.value=text;temp.style.position='fixed';temp.style.opacity='0';
+     document.body.appendChild(temp);temp.focus();temp.select();
+     const ok=document.execCommand('copy');temp.remove();if(!ok)throw Error('کپی خودکار انجام نشد');
+   }
+   message.textContent='✅ مختصات کپی شد؛ حالا می‌توانید در اکسل جای‌گذاری کنید.';
+ }catch(e){message.textContent='کپی خودکار ممکن نشد؛ مختصات را از کادر بالا انتخاب و کپی کنید.'}
+}
 function setPoint(which,lat,lon,data){
  const point={lat:+lat,lon:+lon,address:addressOf(data),county:countyOf(data.address||{})};
  if(which==='origin'){origin=point;if(originMarker)map.removeLayer(originMarker);originMarker=L.marker([point.lat,point.lon],{icon:green}).addTo(map);$('origin-info').style.display='block';$('origin-address').textContent=(point.county?'شهرستان '+point.county+' — ':'')+point.address;$('origin-coords').textContent=point.lat.toFixed(5)+' , '+point.lon.toFixed(5)}
  else{dest=point;if(destMarker)map.removeLayer(destMarker);destMarker=L.marker([point.lat,point.lon],{icon:red}).addTo(map);$('dest-info').style.display='block';$('dest-address').textContent=(point.county?'شهرستان '+point.county+' — ':'')+point.address;$('dest-coords').textContent=point.lat.toFixed(5)+' , '+point.lon.toFixed(5)}
  $('result').style.display='none';
+ updateCopyButtons();
+ $('copy-message').textContent='';
  if(origin&&dest)calculateRoute();
 }
 map.on('click',async e=>{
@@ -101,13 +129,24 @@ async function calculateRoute(){
  $('result').className='result '+cls;$('result-status').textContent=msg;
  }catch(e){$('result').className='result danger';$('result-status').textContent='خطا در محاسبه مسیر: '+e.message}
 }
-$('reset').onclick=()=>{origin=dest=null;cityCenter=null;[originMarker,destMarker,routeLayer].forEach(x=>{if(x)map.removeLayer(x)});originMarker=destMarker=routeLayer=null;$('city-search').value='';$('origin-info').style.display='none';$('dest-info').style.display='none';$('result').style.display='none';map.flyTo([35.6892,51.3890],7,{duration:1.2})};
+$('copy-origin').onclick=()=>{if(origin)copyText(origin.lat.toFixed(6)+' , '+origin.lon.toFixed(6))};
+$('copy-dest').onclick=()=>{if(dest)copyText(dest.lat.toFixed(6)+' , '+dest.lon.toFixed(6))};
+$('copy-all').onclick=()=>{if(origin&&dest)copyText([origin.lat.toFixed(6),origin.lon.toFixed(6),dest.lat.toFixed(6),dest.lon.toFixed(6)].join('\\t'))};
+$('reset').onclick=()=>{origin=dest=null;cityCenter=null;[originMarker,destMarker,routeLayer].forEach(x=>{if(x)map.removeLayer(x)});originMarker=destMarker=routeLayer=null;$('city-search').value='';$('origin-info').style.display='none';$('dest-info').style.display='none';$('result').style.display='none';$('copy-message').textContent='';updateCopyButtons();map.flyTo([35.6892,51.3890],7,{duration:1.2})};
+updateCopyButtons();
 </script>
 </body></html>
 """
 @app.get("/")
 def index():
     return render_template_string(HTML)
+
+@app.get("/poster.png")
+def poster():
+    image_path = Path(__file__).with_name("poster_168_minab.png")
+    if not image_path.is_file():
+        return "فایل پوستر کنار app.py قرار نگرفته است.", 404
+    return send_file(image_path, mimetype="image/png", conditional=True)
 
 @app.get("/route")
 def route():
