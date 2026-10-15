@@ -74,8 +74,8 @@ HTML = r'''<!DOCTYPE html>
     <div class="field-card">
       <strong>فایل Excel باربرگ</strong>
       <input id="excelFile" type="file" accept=".xlsx,.xlsm">
-      <div class="buttons"><button onclick="processExcel()">بررسی مختصات موجود و دریافت گزارش</button><button class="green" onclick="generateCoordinatesExcel()">ساخت مختصات جدید از روی کد پلاک ستون Q</button></div>
-      <p class="status" id="excelStatus">برای بررسی، مختصات I تا L حفظ می‌شوند. برای ساخت مختصات جدید، کد پلاک دو رقمی ستون Q خوانده می‌شود.</p>
+      <div class="buttons"><button onclick="processExcel()">بررسی مختصات موجود و دریافت گزارش</button><button class="green" onclick="generateCoordinatesExcel()">ساخت مختصات جدید از روی کد پلاک ستون N</button></div>
+      <p class="status" id="excelStatus">برای بررسی، مختصات I تا L حفظ می‌شوند. برای ساخت مختصات جدید، کد پلاک دو رقمی ستون N خوانده می‌شود.</p>
       <a id="excelDownload" class="hidden" style="display:inline-block;margin-top:8px;color:var(--primary);font-weight:bold" href="#">دانلود فایل آماده‌شده</a>
     </div>
   </section>
@@ -642,17 +642,17 @@ def generate_coordinates_excel():
         # columns, formatting, formulas, and other data. Only I:L values are changed.
         source_wb = load_workbook(file, data_only=False, read_only=False, keep_vba=keep_vba)
         source_ws = source_wb.active
-        if source_ws.max_column < 17:
+        if source_ws.max_column < 14:
             source_wb.close()
-            return jsonify(error='ستون Q در فایل پیدا نشد. فایل باید کد پلاک را در ستون Q داشته باشد.'), 400
+            return jsonify(error='ستون N در فایل پیدا نشد. فایل باید کد پلاک استان را در ستون N داشته باشد.'), 400
 
         generated = 0
         failed = 0
         for row_num in range(2, source_ws.max_row + 1):
-            raw_code = source_ws.cell(row_num, 17).value
+            raw_code = source_ws.cell(row_num, 14).value
             normalized = normalize_digits(raw_code)
-            match = re.search(r'(?<!\d)(\d{2})(?!\d)', normalized)
-            code = int(match.group(1)) if match else None
+            digits = re.findall(r'\d', normalized)
+            code = int(''.join(digits[-2:])) if len(digits) >= 2 else None
             province = PLATE_PROVINCES.get(code) if code is not None else None
             pair = make_pair_in_province(province, minimum_km=25) if province else None
             if not pair:
@@ -680,7 +680,7 @@ def generate_coordinates_excel():
         response.headers['X-Coordinates-Unchanged'] = str(failed)
         return response
     except Exception as e:
-        return jsonify(error='ساخت فایل مختصات انجام نشد. ستون Q باید کد پلاک داشته باشد و فایل Excel سالم باشد. جزئیات: ' + str(e)), 500
+        return jsonify(error='ساخت فایل مختصات انجام نشد. ستون N باید کد استانِ پلاک داشته باشد و فایل Excel سالم باشد. جزئیات: ' + str(e)), 500
 
 
 @app.route('/process_excel', methods=['POST'])
