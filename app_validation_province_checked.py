@@ -59,6 +59,22 @@ HTML = r'''<!DOCTYPE html>
     <p class="status" id="status">برای شروع، نام مکان را جست‌وجو کن یا حالت انتخاب روی نقشه را فعال کن.</p>
     <div id="map"></div><p class="small">نقشه و جست‌وجو به اینترنت نیاز دارند. مختصات و مسیرهای ذخیره‌شده در همین مرورگر نگهداری می‌شوند.</p>
   </section>
+  <section class="panel" id="coordinateLookupPanel">
+    <div class="section-title">📍 پیدا کردن مکان از روی مختصات</div>
+    <p class="small">اول عرض جغرافیایی (Lat)، بعد طول جغرافیایی (Long) را وارد کن.</p>
+    <div class="grid2">
+      <label class="field-card">Latitude — عرض جغرافیایی
+        <input id="lookupLat" type="number" step="any" min="-90" max="90" placeholder="مثلاً 32.6546">
+      </label>
+      <label class="field-card">Longitude — طول جغرافیایی
+        <input id="lookupLng" type="number" step="any" min="-180" max="180" placeholder="مثلاً 51.6680">
+      </label>
+    </div>
+    <div class="buttons"><button class="green" onclick="findLocationFromCoordinates()">نمایش مکان روی نقشه</button><button class="gray" onclick="openLookupInGoogleMaps()">باز کردن در Google Maps</button></div>
+    <p class="status" id="lookupStatus">مختصات را وارد کن و روی «نمایش مکان روی نقشه» بزن.</p>
+    <div class="field-card"><strong>مکان پیدا شده</strong><div id="lookupResult" class="coords address-details">—</div></div>
+  </section>
+
   <section class="panel"><div class="section-title">۲. مختصات و اطلاعات مسیر</div>
     <div class="grid2">
       <div class="field-card"><span class="tag">مبدأ</span><div>استان، شهر، محله و خیابان</div><div class="coords address-details" id="originCity">—</div><div>Latitude / عرض جغرافیایی</div><div class="coords" id="originLat">—</div><div>Longitude / طول جغرافیایی</div><div class="coords" id="originLng">—</div><button onclick="copyPoint('origin')">کپی مختصات مبدأ</button></div>
@@ -88,6 +104,34 @@ let map, routeLayer=null, mode=null, routeRequestId=0;
 const points={origin:{lat:null,lng:null,marker:null},destination:{lat:null,lng:null,marker:null}};
 const STORAGE_KEY='iranCoordinateMapPoints_v2', ROUTES_KEY='iranCoordinateMapSavedRoutes_v1', THEME_KEY='iranCoordinateMapTheme';
 function setStatus(text){document.getElementById('status').textContent=text}
+let lookupMarker=null, lastLookupPoint=null;
+async function findLocationFromCoordinates(){
+  const lat=Number(document.getElementById('lookupLat').value);
+  const lng=Number(document.getElementById('lookupLng').value);
+  const status=document.getElementById('lookupStatus');
+  const resultBox=document.getElementById('lookupResult');
+  if(document.getElementById('lookupLat').value.trim()===''||document.getElementById('lookupLng').value.trim()===''||!Number.isFinite(lat)||!Number.isFinite(lng)||lat < -90||lat > 90||lng < -180||lng > 180){status.textContent='مختصات معتبر وارد کن؛ عرض بین ۹۰- تا ۹۰ و طول بین ۱۸۰- تا ۱۸۰ باشد.';return;}
+  lastLookupPoint={lat,lng}; status.textContent='در حال پیدا کردن نام مکان...'; resultBox.textContent='در حال جست‌وجو...';
+  if(lookupMarker){map.removeLayer(lookupMarker);lookupMarker=null;}
+  lookupMarker=L.marker([lat,lng]).addTo(map).bindPopup('مختصات واردشده').openPopup();
+  map.setView([lat,lng],Math.max(map.getZoom(),13));
+  try{
+    const url='https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lng);
+    const response=await fetch(url,{headers:{'Accept-Language':'fa'}});
+    if(!response.ok)throw new Error('reverse lookup failed');
+    const data=await response.json();
+    if(!data||!data.display_name)throw new Error('no place found');
+    resultBox.textContent=data.display_name;
+    lookupMarker.bindPopup(data.display_name).openPopup();
+    status.textContent='مکان پیدا شد و نقطه روی نقشه نمایش داده شد.';
+  }catch(e){resultBox.textContent='نام مکان از سرویس نقشه دریافت نشد؛ اما نقطه روی نقشه نمایش داده شده است.';status.textContent='جست‌وجوی نام مکان ناموفق بود. اتصال اینترنت یا سرویس نقشه را بررسی کن.';}
+}
+function openLookupInGoogleMaps(){
+  const latText=document.getElementById('lookupLat').value.trim(),lngText=document.getElementById('lookupLng').value.trim();
+  const lat=Number(latText),lng=Number(lngText);
+  if(!latText||!lngText||!Number.isFinite(lat)||!Number.isFinite(lng)||lat < -90||lat > 90||lng < -180||lng > 180){alert('ابتدا عرض و طول جغرافیایی معتبر وارد کن.');return;}
+  window.open('https://www.google.com/maps/search/?api=1&query='+lat+','+lng,'_blank','noopener');
+}
 function validPoint(p){return Number.isFinite(p.lat)&&Number.isFinite(p.lng)}
 function initializeMap(){
   map=L.map('map').setView([32.4,53.7],5);
