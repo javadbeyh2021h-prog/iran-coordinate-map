@@ -70,7 +70,7 @@ function setStatus(text){document.getElementById('status').textContent=text}
 function validPoint(p){return Number.isFinite(p.lat)&&Number.isFinite(p.lng)}
 function initializeMap(){
   map=L.map('map').setView([32.4,53.7],5);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'}).addTo(map);
   map.on('click',e=>{
     const lat=e.latlng.lat, lng=e.latlng.lng;
     if(!validPoint(points.origin) || validPoint(points.destination)){
