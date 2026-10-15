@@ -44,6 +44,7 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 .map-card{padding:12px;height:calc(100vh - 120px);min-height:530px;position:sticky;top:20px}#map{width:100%;height:100%;min-height:500px;border-radius:14px}
 .legend{font-size:12px;color:var(--muted);margin:8px 4px 0}
 .poster-wrap{max-width:1000px;margin:20px auto 0;padding:0 15px;text-align:center}.poster-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:0 10px 25px -5px #0000000d}.poster-title{font-weight:900;color:var(--primary);margin:0 0 12px;font-size:18px}.poster-image{display:block;width:100%;max-width:520px;height:auto;margin:0 auto;border-radius:12px;box-shadow:0 8px 24px #0002}.poster-caption{font-size:12px;color:var(--muted);margin:10px 0 0}
+.game-wrap{max-width:900px;margin:20px auto;padding:0 15px 30px}.game-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 10px 25px -5px #0000000d}.game-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.game-title{font-size:17px;font-weight:900;margin:0}.game-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.game-score{background:#f1f5f9;border-radius:9px;padding:8px 12px;font-weight:900}.game-btn{background:#2563eb;color:white;padding:10px 15px}.game-board-wrap{margin-top:14px;background:#0f172a;border-radius:14px;padding:8px;overflow:hidden}#snake-board{display:block;width:100%;max-width:640px;margin:auto;background:#111827;border-radius:8px;touch-action:none}.game-help{font-size:12px;color:var(--muted);line-height:1.9;margin:10px 0 0}.game-pad{display:grid;grid-template-columns:repeat(3,54px);gap:6px;justify-content:center;margin-top:12px}.game-pad button{background:#e2e8f0;color:#0f172a;padding:12px 0;font-size:18px}.game-pad button:nth-child(1){grid-column:2}.game-pad button:nth-child(2){grid-column:1;grid-row:2}.game-pad button:nth-child(3){grid-column:2;grid-row:2}.game-pad button:nth-child(4){grid-column:3;grid-row:2}
 @media(max-width:991px){main{grid-template-columns:1fr}.map-card{position:static;height:55vh;min-height:400px}#map{min-height:375px}.live{position:static;transform:none;display:inline-block;margin-top:10px}}
 </style>
 </head>
@@ -65,6 +66,14 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 </section>
 <section class="card map-card"><div id="map"></div></section>
 </main>
+<section class="game-wrap">
+ <div class="game-card">
+  <div class="game-head"><h2 class="game-title">🐍 بازی مار دالاهو</h2><div class="game-tools"><span class="game-score">امتیاز: <span id="snake-score">۰</span></span><button class="game-btn" id="snake-start">شروع / بازی دوباره</button></div></div>
+  <div class="game-board-wrap"><canvas id="snake-board" width="600" height="400" aria-label="بازی مار"></canvas></div>
+  <p class="game-help" id="snake-message">برای شروع، دکمه «شروع» را بزن؛ با کلیدهای جهت‌دار یا W A S D حرکت کن و خوراکی‌ها را بخور.</p>
+  <div class="game-pad" aria-label="کنترل لمسی بازی"><button type="button" data-dir="up" aria-label="بالا">⬆️</button><button type="button" data-dir="left" aria-label="چپ">⬅️</button><button type="button" data-dir="down" aria-label="پایین">⬇️</button><button type="button" data-dir="right" aria-label="راست">➡️</button></div>
+ </div>
+</section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const map=L.map('map').setView([35.6892,51.3890],7);
@@ -144,6 +153,26 @@ $('copy-dest').onclick=()=>{if(dest)copyText(dest.lat.toFixed(6)+' , '+dest.lon.
 $('copy-all').onclick=()=>{if(origin&&dest)copyText([origin.lat.toFixed(6),origin.lon.toFixed(6),dest.lat.toFixed(6),dest.lon.toFixed(6)].join('\\t'))};
 $('reset').onclick=()=>{origin=dest=null;nextPoint='origin';cityCenter=null;[originMarker,destMarker,routeLayer].forEach(x=>{if(x)map.removeLayer(x)});originMarker=destMarker=routeLayer=null;$('city-search').value='';$('origin-info').style.display='none';$('dest-info').style.display='none';$('result').style.display='none';$('copy-message').textContent='';updateCopyButtons();map.invalidateSize()};
 updateCopyButtons();
+
+// بازی مار مستقل از نقشه
+const snakeCanvas=$('snake-board'), snakeCtx=snakeCanvas.getContext('2d');
+const CELL=20, COLS=snakeCanvas.width/CELL, ROWS=snakeCanvas.height/CELL;
+let snake=[], snakeDir={x:1,y:0}, snakeNext={x:1,y:0}, snakeFood={x:10,y:8}, snakeScore=0, snakeTimer=null, snakeRunning=false;
+function snakeFoodNew(){do{snakeFood={x:Math.floor(Math.random()*COLS),y:Math.floor(Math.random()*ROWS)}}while(snake.some(p=>p.x===snakeFood.x&&p.y===snakeFood.y))}
+function snakeDraw(){
+ snakeCtx.fillStyle='#111827';snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+ snakeCtx.strokeStyle='#1f2937';snakeCtx.lineWidth=1;for(let x=0;x<=COLS;x++){snakeCtx.beginPath();snakeCtx.moveTo(x*CELL,0);snakeCtx.lineTo(x*CELL,snakeCanvas.height);snakeCtx.stroke()}for(let y=0;y<=ROWS;y++){snakeCtx.beginPath();snakeCtx.moveTo(0,y*CELL);snakeCtx.lineTo(snakeCanvas.width,y*CELL);snakeCtx.stroke()}
+ snakeCtx.fillStyle='#f97316';snakeCtx.beginPath();snakeCtx.arc(snakeFood.x*CELL+CELL/2,snakeFood.y*CELL+CELL/2,CELL*.38,0,Math.PI*2);snakeCtx.fill();
+ snake.forEach((p,i)=>{snakeCtx.fillStyle=i===0?'#34d399':'#10b981';snakeCtx.fillRect(p.x*CELL+2,p.y*CELL+2,CELL-4,CELL-4)});
+ if(!snakeRunning){snakeCtx.fillStyle='#ffffff';snakeCtx.font='bold 24px sans-serif';snakeCtx.textAlign='center';snakeCtx.fillText(snake.length?'بازی تمام شد!':'برای شروع کلیک کن',snakeCanvas.width/2,snakeCanvas.height/2)}
+}
+function snakeStart(){clearInterval(snakeTimer);snake=[{x:Math.floor(COLS/2),y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-1,y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-2,y:Math.floor(ROWS/2)}];snakeDir={x:1,y:0};snakeNext={x:1,y:0};snakeScore=0;snakeRunning=true;$('snake-score').textContent='۰';$('snake-message').textContent='عالیه! خوراکی‌ها را بخور و به دیوار یا بدن خودت برخورد نکن.';snakeFoodNew();snakeDraw();snakeTimer=setInterval(snakeStep,115)}
+function snakeStep(){if(!snakeRunning)return;snakeDir=snakeNext;const head={x:snake[0].x+snakeDir.x,y:snake[0].y+snakeDir.y};if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some((p,i)=>i<snake.length-1&&p.x===head.x&&p.y===head.y)){snakeRunning=false;clearInterval(snakeTimer);$('snake-message').textContent='بازی تمام شد! امتیاز شما: '+snakeScore+' — برای شروع دوباره دکمه را بزن.';snakeDraw();return}snake.unshift(head);if(head.x===snakeFood.x&&head.y===snakeFood.y){snakeScore++;$('snake-score').textContent=snakeScore.toLocaleString('fa-IR');snakeFoodNew()}else snake.pop();snakeDraw()}
+function snakeTurn(d){if(!snakeRunning)return;const dirs={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};const n=dirs[d];if(n&&!(n.x===-snakeDir.x&&n.y===-snakeDir.y))snakeNext=n}
+$('snake-start').addEventListener('click',snakeStart);document.querySelectorAll('.game-pad button').forEach(b=>b.addEventListener('click',()=>snakeTurn(b.dataset.dir)));
+document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();const mapKeys={'arrowup':'up','w':'up','arrowdown':'down','s':'down','arrowleft':'left','a':'left','arrowright':'right','d':'right'};if(mapKeys[k]&&document.activeElement!==$('city-search')){e.preventDefault();snakeTurn(mapKeys[k])}});
+snakeDraw();
+
 </script>
 </body></html>
 """
