@@ -103,11 +103,21 @@ function setPoint(which,lat,lon,data){
  $('copy-message').textContent='';
  if(origin&&dest)calculateRoute();
 }
+let nextPoint='origin';
 map.on('click',async e=>{
- if(origin&&dest){alert('مبدأ و مقصد قبلاً انتخاب شده‌اند. برای انتخاب دوباره، «شروع مجدد» را بزنید.');return}
- const which=origin?'dest':'origin';
+ const which=nextPoint;
+ // شروع یک جفت تازه با کلیک سوم: مبدأ قبلی جایگزین می‌شود و مقصد قبلی پاک می‌شود.
+ if(which==='origin'){
+   dest=null;
+   if(destMarker){map.removeLayer(destMarker);destMarker=null}
+   if(routeLayer){map.removeLayer(routeLayer);routeLayer=null}
+   $('dest-info').style.display='none';
+   $('result').style.display='none';
+   updateCopyButtons();
+ }
  try{const d=await reverse(e.latlng.lat,e.latlng.lng);setPoint(which,e.latlng.lat,e.latlng.lng,d)}
  catch(err){setPoint(which,e.latlng.lat,e.latlng.lng,{display_name:'مختصات انتخاب‌شده روی نقشه',address:{}})}
+ nextPoint=which==='origin'?'dest':'origin';
 });
 let searchTimer;
 $('city-search').addEventListener('input',()=>{
@@ -132,7 +142,7 @@ async function calculateRoute(){
 $('copy-origin').onclick=()=>{if(origin)copyText(origin.lat.toFixed(6)+' , '+origin.lon.toFixed(6))};
 $('copy-dest').onclick=()=>{if(dest)copyText(dest.lat.toFixed(6)+' , '+dest.lon.toFixed(6))};
 $('copy-all').onclick=()=>{if(origin&&dest)copyText([origin.lat.toFixed(6),origin.lon.toFixed(6),dest.lat.toFixed(6),dest.lon.toFixed(6)].join('\\t'))};
-$('reset').onclick=()=>{origin=dest=null;cityCenter=null;[originMarker,destMarker,routeLayer].forEach(x=>{if(x)map.removeLayer(x)});originMarker=destMarker=routeLayer=null;$('city-search').value='';$('origin-info').style.display='none';$('dest-info').style.display='none';$('result').style.display='none';$('copy-message').textContent='';updateCopyButtons();map.invalidateSize()};
+$('reset').onclick=()=>{origin=dest=null;nextPoint='origin';cityCenter=null;[originMarker,destMarker,routeLayer].forEach(x=>{if(x)map.removeLayer(x)});originMarker=destMarker=routeLayer=null;$('city-search').value='';$('origin-info').style.display='none';$('dest-info').style.display='none';$('result').style.display='none';$('copy-message').textContent='';updateCopyButtons();map.invalidateSize()};
 updateCopyButtons();
 </script>
 </body></html>
