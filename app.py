@@ -126,7 +126,9 @@ def home():
 @app.route('/iran-map.png')
 def iran_map_image():
     return send_file(
-        app.root_path + '/iran-map.png',
+       
+        app.root_path + '/iran-map.png.png',
+
         mimetype='image/png'
     )
 
