@@ -1,10 +1,9 @@
 from flask import Flask, render_template_string, request, send_file, jsonify
 from io import BytesIO
 import random
-import time
+import math
 import re
-import requests
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
 
 app = Flask(__name__)
 
@@ -50,12 +49,12 @@ HTML = r'''<!DOCTYPE html>
 
   <section class="panel">
     <div class="section-title">۵. ساخت مختصات باربرگ از روی پلاک اکسل</div>
-    <p class="small">فایل Excel را انتخاب کن. برنامه کد دو رقمی ستون Q را می‌خواند، استان را تا جایی که در جدولش شناخته شده باشد تشخیص می‌دهد و مختصات را در ستون‌های I تا L می‌نویسد. برای هر ردیف فاصله جاده‌ای باید حداقل ۲۰ کیلومتر باشد. ردیف‌های ناشناخته یا بدون مسیر معتبر در گزارش مشخص می‌شوند.</p>
+    <p class="small">فایل Excel را انتخاب کن. برنامه کد پلاک ستون Q را می‌خواند، استان را تشخیص می‌دهد و یک فایل اکسل جدید با پلاک و چهار ستون مختصات مبدأ و مقصد می‌سازد. فاصله مستقیم دو نقطه حداقل ۲۰ کیلومتر در نظر گرفته می‌شود.</p>
     <div class="field-card">
       <strong>فایل Excel باربرگ</strong>
       <input id="excelFile" type="file" accept=".xlsx,.xlsm">
       <div class="buttons"><button onclick="processExcel()">ساخت فایل مختصات</button></div>
-      <p class="status" id="excelStatus">ستون Q: کد پلاک؛ ستون‌های I/J: مبدأ؛ ستون‌های K/L: مقصد.</p>
+      <p class="status" id="excelStatus">ورودی: ستون Q؛ خروجی: پلاک، عرض مبدأ، طول مبدأ، عرض مقصد و طول مقصد.</p>
       <a id="excelDownload" class="hidden" style="display:inline-block;margin-top:8px;color:var(--primary);font-weight:bold" href="#">دانلود فایل آماده‌شده</a>
     </div>
   </section>
@@ -109,8 +108,8 @@ async function processExcel(){
     const response=await fetch('/process_excel',{method:'POST',body:form});
     if(!response.ok){let msg='پردازش ناموفق بود.';try{const j=await response.json();msg=j.error||msg}catch(e){}throw Error(msg)}
     const blob=await response.blob(), url=URL.createObjectURL(blob);
-    link.href=url;link.download='barbarg_with_coordinates.xlsx';link.classList.remove('hidden');
-    status.textContent='آماده شد. روی «دانلود فایل آماده‌شده» بزن. ردیف‌های نامشخص در ستون وضعیت بررسی ثبت می‌شوند.';
+    link.href=url;link.download='coordinates_output.xlsx';link.classList.remove('hidden');
+    status.textContent='فایل اکسل جدید آماده شد؛ فقط پلاک و چهار ستون مختصات داخل آن است. برای پلاک‌های ناشناخته مختصات خالی می‌ماند.';
   }catch(e){status.textContent='خطا: '+e.message;}
 }
 
@@ -165,78 +164,97 @@ PROVINCE_CITIES = {
 }
 def normalize_digits(value):
     return str(value or '').translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩','01234567890123456789')).strip()
-def osrm_distance(a,b,timeout=12):
-    url=f"https://router.project-osrm.org/route/v1/driving/{a[1]},{a[0]};{b[1]},{b[0]}?overview=false"
-    r=requests.get(url,timeout=timeout)
-    r.raise_for_status()
-    data=r.json()
-    if data.get('code')!='Ok' or not data.get('routes'): return None
-    return float(data['routes'][0]['distance'])/1000
-def make_pair(city):
-    name,lat,lon,radius=city
-    # Generate candidate points around the city center, then accept only a
-    # real OSRM road route >=20 km. Coordinates remain approximate city-area points.
-    for _ in range(10):
-        a=(lat+random.uniform(-radius,radius),lon+random.uniform(-radius,radius))
-        b=(lat+random.uniform(-radius,radius),lon+random.uniform(-radius,radius))
-        try:
-            km=osrm_distance(a,b)
-            if km is not None and km >= 20:
-                return a,b,km,name
-        except Exception:
-            time.sleep(.15)
+def direct_distance_km(a, b):
+    """فاصله مستقیم دو نقطه بر حسب کیلومتر؛ بدون درخواست به سرویس خارجی."""
+    lat1, lon1 = map(math.radians, a)
+    lat2, lon2 = map(math.radians, b)
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return 6371.0 * 2 * math.asin(min(1.0, math.sqrt(h)))
+
+
+def make_pair(city, minimum_km=20):
+    # Seed locations are approximate city centers. Use a sufficiently broad
+    # local envelope so a pair at least 20 km apart can be found.
+    name, lat, lon, radius = city
+    radius = max(radius, 0.16)
+    for _ in range(250):
+        a = (lat + random.uniform(-radius, radius),
+             lon + random.uniform(-radius, radius))
+        b = (lat + random.uniform(-radius, radius),
+             lon + random.uniform(-radius, radius))
+        if direct_distance_km(a, b) >= minimum_km:
+            return a, b, direct_distance_km(a, b), name
     return None
+
 
 @app.route('/process_excel', methods=['POST'])
 def process_excel():
     if 'file' not in request.files or not request.files['file'].filename:
-        return jsonify(error='فایل اکسل انتخاب نشده است.'),400
-    file=request.files['file']
-    if not file.filename.lower().endswith(('.xlsx','.xlsm')):
-        return jsonify(error='لطفاً فایل xlsx یا xlsm انتخاب کن.'),400
+        return jsonify(error='فایل اکسل انتخاب نشده است.'), 400
+    file = request.files['file']
+    if not file.filename.lower().endswith(('.xlsx', '.xlsm')):
+        return jsonify(error='لطفاً فایل xlsx یا xlsm انتخاب کن.'), 400
+
     try:
-        wb=load_workbook(file, data_only=False)
-        ws=wb.active
-        # Add a status column at the end, preserving existing columns.
-        status_col=ws.max_column+1
-        ws.cell(1,status_col).value='وضعیت تولید مختصات'
-        ws.cell(1,status_col+1).value='استان تشخیص‌داده‌شده'
-        for row in range(2,ws.max_row+1):
-            raw=ws.cell(row,17).value # Q: first two digits of plate
-            digits=normalize_digits(raw)
-            match=re.search(r'(?<!\d)(\d{1,2})(?!\d)',digits)
-            code=int(match.group(1)) if match else None
-            province=PLATE_PROVINCES.get(code)
-            ws.cell(row,status_col+1).value=province or ''
-            if not province:
-                ws.cell(row,status_col).value=f'بررسی لازم: کد پلاک {digits or "خالی"} در جدول موجود نیست'
+        source_wb = load_workbook(file, data_only=True, read_only=True)
+        source_ws = source_wb.active
+
+        # A brand-new workbook with exactly five columns.
+        output_wb = Workbook()
+        output_ws = output_wb.active
+        output_ws.title = 'مختصات'
+        output_ws.append([
+            'پلاک', 'عرض جغرافیایی مبدأ (Lat)', 'طول جغرافیایی مبدأ (Long)',
+            'عرض جغرافیایی مقصد (Lat)', 'طول جغرافیایی مقصد (Long)'
+        ])
+
+        for row in range(2, source_ws.max_row + 1):
+            raw_plate = source_ws.cell(row, 17).value  # Column Q
+            plate_value = '' if raw_plate is None else str(raw_plate).strip()
+            digits = normalize_digits(raw_plate)
+            match = re.search(r'(?<!\\d)(\\d{1,2})(?!\\d)', digits)
+            code = int(match.group(1)) if match else None
+            province = PLATE_PROVINCES.get(code)
+
+            # Keep every source row in the output, even if its plate code
+            # is unknown; in that case the four coordinate cells stay blank.
+            if not province or not PROVINCE_CITIES.get(province):
+                output_ws.append([plate_value, None, None, None, None])
                 continue
-            cities=PROVINCE_CITIES.get(province,[])
-            if not cities:
-                ws.cell(row,status_col).value='بررسی لازم: شهرهای استان تعریف نشده'
-                continue
-            city_order=cities[:]
+
+            city_order = PROVINCE_CITIES[province][:]
             random.shuffle(city_order)
-            pair=None
+            pair = None
             for city in city_order:
-                pair=make_pair(city)
-                if pair: break
+                pair = make_pair(city, minimum_km=20)
+                if pair:
+                    break
+
             if not pair:
-                ws.cell(row,status_col).value='مسیر معتبر ۲۰ کیلومتر به بالا پیدا نشد؛ مختصات وارد نشد'
+                output_ws.append([plate_value, None, None, None, None])
                 continue
-            a,b,km,city_name=pair
-            # I=origin latitude, J=origin longitude, K=destination latitude, L=destination longitude
-            ws.cell(row,9).value=round(a[0],6)
-            ws.cell(row,10).value=round(a[1],6)
-            ws.cell(row,11).value=round(b[0],6)
-            ws.cell(row,12).value=round(b[1],6)
-            ws.cell(row,status_col).value=f'ثبت شد؛ {city_name}؛ مسیر جاده‌ای حدود {km:.1f} کیلومتر'
-        output=BytesIO()
-        wb.save(output); output.seek(0)
-        return send_file(output,as_attachment=True,download_name='barbarg_with_coordinates.xlsx',
-                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+            a, b, distance_km, city_name = pair
+            output_ws.append([
+                plate_value,
+                round(a[0], 6), round(a[1], 6),
+                round(b[0], 6), round(b[1], 6)
+            ])
+
+        source_wb.close()
+        output = BytesIO()
+        output_wb.save(output)
+        output.seek(0)
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name='coordinates_output.xlsx',
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
     except Exception as e:
-        return jsonify(error='فایل پردازش نشد. مطمئن شو فایل Excel سالم است. جزئیات: '+str(e)),500
+        return jsonify(error='فایل پردازش نشد. مطمئن شو فایل Excel سالم است. جزئیات: ' + str(e)), 500
 
 
 if __name__ == '__main__':
