@@ -48,6 +48,11 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 @media(max-width:991px){main{grid-template-columns:1fr}.map-card{position:static;height:55vh;min-height:400px}#map{min-height:375px}.live{position:static;transform:none;display:inline-block;margin-top:10px}}
  
 .pasoor-area{margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:16px;background:#f8fafc}.pasoor-area h3{margin:0 0 12px}.pasoor-cards{display:flex;flex-wrap:wrap;gap:9px;min-height:80px;align-items:center}.playing-card{width:64px;height:92px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;border-radius:10px;box-shadow:0 4px 10px #0f172a14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:19px;padding:5px}.playing-card b{font-size:25px}.playing-card.red-card{color:#dc2626}.playing-card:hover{transform:translateY(-4px);box-shadow:0 8px 16px #0f172a22}.game-board-wrap canvas{max-width:100%;height:auto;border-radius:16px}
+ 
+/* Polished Hokm table and mobile-friendly controls */
+.hokm-table{margin-top:18px;padding:18px;border-radius:22px;background:radial-gradient(ellipse at center,#18734f 0%,#10553d 55%,#073b2b 100%);color:#fff;box-shadow:inset 0 0 0 5px #c6a15b, inset 0 0 0 8px #6b4b21;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:14px}
+.hokm-seat{display:flex;flex-direction:column;align-items:center;gap:5px;font-weight:800;font-size:13px;text-align:center}.hokm-seat span{font-size:11px;color:#d1fae5;font-weight:500}.hokm-middle{width:100%;display:grid;grid-template-columns:minmax(64px,1fr) minmax(130px,2fr) minmax(64px,1fr);gap:8px;align-items:center}.hokm-trick{min-height:135px;border:1px dashed #a7f3d055;border-radius:15px;display:flex;flex-wrap:wrap;align-content:center;align-items:center;justify-content:center;gap:6px;padding:8px}.hokm-trick .playing-card{width:48px;height:69px;font-size:14px}.hokm-trick .playing-card b{font-size:20px}.user-seat{background:#ffffff18;border-radius:12px;padding:8px 22px}.hokm-select{margin-top:15px;padding:14px;border-radius:14px;background:#fff7ed;border:1px solid #fdba74;display:flex;flex-direction:column;gap:10px;color:#7c2d12}.hokm-select.hidden{display:none}.hokm-suits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.hokm-suits button{padding:12px 5px;border-radius:12px;background:#fff;border:1px solid #fed7aa;color:#7c2d12;font-size:15px;font-weight:900}.hokm-suits button:nth-child(2),.hokm-suits button:nth-child(3){color:#dc2626}.pasoor-area{background:#eefbf4}.playing-card{flex-shrink:0;width:58px;height:86px;font-weight:900}.playing-card:disabled{opacity:.45;cursor:not-allowed}.game-pad button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:54px;border-radius:12px;box-shadow:0 3px 0 #94a3b8;font-weight:900}.game-pad button small{font-size:10px;font-weight:700}.game-pad button:active{transform:translateY(2px);box-shadow:0 1px 0 #94a3b8}.game-pad{grid-template-columns:repeat(3,minmax(56px,72px));gap:8px}.game-pad button:nth-child(1){grid-column:2;grid-row:1}.game-pad button:nth-child(2){grid-column:1;grid-row:2}.game-pad button:nth-child(3){grid-column:2;grid-row:2}.game-pad button:nth-child(4){grid-column:3;grid-row:2}
+@media(max-width:600px){.hokm-table{padding:12px;min-height:260px}.hokm-middle{grid-template-columns:56px minmax(105px,1fr) 56px;gap:4px}.hokm-seat{font-size:11px}.hokm-trick{min-height:115px;padding:4px}.hokm-trick .playing-card{width:40px;height:60px}.playing-card{width:48px;height:74px}.pasoor-cards{gap:5px}.hokm-suits{gap:5px}.hokm-suits button{font-size:13px;padding:10px 2px}}
 </style>
 </head>
 <body>
@@ -85,17 +90,18 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
    <p class="game-help">یکی از بازی‌ها را انتخاب کن تا در صفحه جداگانه باز شود.</p>
    <div class="dash-grid">
     <button class="dash-tile" type="button" data-open="game-page"><span class="tile-icon">🐍</span><strong>مار کلاسیک</strong><span>سرعت، امتیاز و رکوردگیری</span></button>
-    <button class="dash-tile" type="button" data-open="pasoor-page"><span class="tile-icon">🂡</span><strong>پاسور چهاربرگ</strong><span>بازی کارتی با حریف کامپیوتری</span></button>
+    <button class="dash-tile" type="button" data-open="pasoor-page"><span class="tile-icon">🂡</span><strong>حکم چهار نفره</strong><span>حکم انتخاب کن، کارت بازی کن و دست‌ها را ببر</span></button>
    </div>
   </div>
  </section>
 </div>
 <div id="pasoor-page" class="page hidden">
  <section class="game-wrap"><div class="game-card">
-  <div class="game-head"><h2 class="game-title">🂡 پاسور دالاهو</h2><div class="game-tools"><span class="game-score">امتیاز شما: <span id="pasoor-player-score">۰</span></span><span class="game-score">کامپیوتر: <span id="pasoor-ai-score">۰</span></span><button class="game-btn" id="pasoor-new">دست جدید</button></div></div>
-  <p class="game-help" id="pasoor-message">کارت خودت را انتخاب کن. این نسخه ساده‌شده‌ی چهاربرگ است: کارت هم‌رتبه یا ترکیب‌هایی با مجموع ۱۱ را جمع کن.</p>
-  <div class="pasoor-area"><h3>کارت‌های روی زمین</h3><div id="pasoor-table" class="pasoor-cards"></div></div>
-  <div class="pasoor-area"><h3>کارت‌های شما (روی یک کارت بزن)</h3><div id="pasoor-hand" class="pasoor-cards"></div></div>
+  <div class="game-head"><h2 class="game-title">🂡 حکم چهار نفره دالاهو</h2><div class="game-tools"><span class="game-score">تیم شما: <span id="pasoor-player-score">۰</span></span><span class="game-score">حریف: <span id="pasoor-ai-score">۰</span></span><button class="game-btn" id="pasoor-new">بازی جدید</button></div></div>
+  <p class="game-help" id="pasoor-message">۵ کارت اول را ببین و خال حکم را انتخاب کن. سپس با هم‌تیمی‌ات مقابل دو حریف بازی کن؛ اگر از خال شروع‌شده کارت داری، باید همان خال را بازی کنی.</p>
+  <div id="hokm-select" class="hokm-select hidden"><strong>خال حکم را انتخاب کن:</strong><div class="hokm-suits"><button type="button" data-trump="♠">♠ پیک</button><button type="button" data-trump="♥">♥ دل</button><button type="button" data-trump="♦">♦ خشت</button><button type="button" data-trump="♣">♣ گشنیز</button></div></div>
+  <div class="hokm-table"><div class="hokm-seat">حریف روبه‌رو <span id="hokm-top-count">۱۳ کارت</span></div><div class="hokm-middle"><div class="hokm-seat">حریف چپ <span id="hokm-left-count">۱۳ کارت</span></div><div id="pasoor-table" class="hokm-trick"><span class="game-help">کارت‌های هر دور اینجا نمایش داده می‌شوند</span></div><div class="hokm-seat">هم‌تیمی <span id="hokm-right-count">۱۳ کارت</span></div></div><div class="hokm-seat user-seat">شما <span id="hokm-user-count">۵ کارت</span></div></div>
+  <div class="pasoor-area"><h3>دست شما — برای بازی روی کارت بزن</h3><div id="pasoor-hand" class="pasoor-cards"></div></div>
  </div></section>
 </div>
 <div id="game-page" class="page hidden">
@@ -103,8 +109,8 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
  <div class="game-card">
   <div class="game-head"><h2 class="game-title">🐍 بازی مار دالاهو</h2><div class="game-tools"><span class="game-score">امتیاز: <span id="snake-score">۰</span></span><button class="game-btn" id="snake-start">شروع / بازی دوباره</button></div></div>
   <div class="game-board-wrap"><canvas id="snake-board" width="600" height="400" aria-label="بازی مار"></canvas></div>
-  <p class="game-help" id="snake-message">برای شروع، دکمه «شروع» را بزن؛ با کلیدهای جهت‌دار یا W A S D حرکت کن و خوراکی‌ها را بخور.</p>
-  <div class="game-pad" aria-label="کنترل لمسی بازی"><button type="button" data-dir="up" aria-label="بالا">⬆️</button><button type="button" data-dir="left" aria-label="چپ">⬅️</button><button type="button" data-dir="down" aria-label="پایین">⬇️</button><button type="button" data-dir="right" aria-label="راست">➡️</button></div>
+  <p class="game-help" id="snake-message">برای شروع دکمه «شروع» یا کلید Enter را بزن. حرکت با جهت‌ها یا W A S D؛ گوشی: از دکمه‌های جهت‌دار زیر صفحه استفاده کن.</p>
+  <div class="game-pad" aria-label="کنترل لمسی بازی"><button type="button" data-dir="up" aria-label="حرکت به بالا">▲<small>بالا</small></button><button type="button" data-dir="left" aria-label="حرکت به چپ">◀<small>چپ</small></button><button type="button" data-dir="down" aria-label="حرکت به پایین">▼<small>پایین</small></button><button type="button" data-dir="right" aria-label="حرکت به راست">▶<small>راست</small></button></div>
  </div>
 </section>
 </div>
@@ -193,16 +199,32 @@ $('copy-all').onclick=()=>{if(origin&&dest)copyText([origin.lat.toFixed(6),origi
 $('reset').onclick=()=>{origin=dest=null;nextPoint='origin';cityCenter=null;[originMarker,destMarker,routeLayer].forEach(x=>{if(x)map.removeLayer(x)});originMarker=destMarker=routeLayer=null;$('city-search').value='';$('origin-info').style.display='none';$('dest-info').style.display='none';$('result').style.display='none';$('copy-message').textContent='';updateCopyButtons();map.invalidateSize()};
 updateCopyButtons();
 
-// پاسور چهاربرگ ساده‌شده با حریف کامپیوتری
-let pasoorStarted=false, pDeck=[], pHand=[], pTable=[], pPlayerScore=0, pAiScore=0, pBusy=false;
-const suits=['♠','♥','♦','♣'], ranks=[{v:1,t:'A'},{v:2,t:'2'},{v:3,t:'3'},{v:4,t:'4'},{v:5,t:'5'},{v:6,t:'6'},{v:7,t:'7'},{v:8,t:'8'},{v:9,t:'9'},{v:10,t:'10'},{v:11,t:'J'},{v:12,t:'Q'},{v:13,t:'K'}];
-function pShuffle(){pDeck=[];for(const su of suits)for(const r of ranks)pDeck.push({s:su,v:r.v,t:r.t,id:su+r.t});for(let i=pDeck.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[pDeck[i],pDeck[j]]=[pDeck[j],pDeck[i]]}}
-function pCard(c){return `<button type="button" class="playing-card ${c.s==='♥'||c.s==='♦'?'red-card':''}" data-card="${c.id}"><span>${c.t}</span><b>${c.s}</b></button>`}
-function pRender(){$('pasoor-table').innerHTML=pTable.map(pCard).join('')||'<span class="game-help">زمین خالی است</span>';$('pasoor-hand').innerHTML=pHand.map(pCard).join('');$('pasoor-player-score').textContent=pPlayerScore.toLocaleString('fa-IR');$('pasoor-ai-score').textContent=pAiScore.toLocaleString('fa-IR');document.querySelectorAll('#pasoor-hand [data-card]').forEach(b=>b.addEventListener('click',()=>pPlay(b.dataset.card)))}
-function pasoorNewGame(){pasoorStarted=true;pShuffle();pHand=pDeck.splice(0,4);pTable=pDeck.splice(0,4);pPlayerScore=0;pAiScore=0;pBusy=false;$('pasoor-message').textContent='کارتت را انتخاب کن؛ کارت هم‌رتبه یا چند کارت با مجموع ۱۱ را جمع کن.';pRender()}
-function pCombos(target,need){const out=[];function walk(i,sum,arr){if(sum===target){out.push(arr.slice());return}if(sum>target||i>=pTable.length||arr.length>=need)return;for(let j=i;j<pTable.length;j++)walk(j+1,sum+pTable[j].v,[...arr,j])}walk(0,0,[]);return out}
-function pPlay(id){if(pBusy)return;const idx=pHand.findIndex(c=>c.id===id);if(idx<0)return;const c=pHand[idx];let picks=[];const same=pTable.findIndex(x=>x.v===c.v);if(same>=0)picks=[same];else if(c.v<=10){const combos=pCombos(11-c.v,4);if(combos.length)picks=combos[0]}if(picks.length){const captured=[c,...picks.map(i=>pTable[i])];pTable=pTable.filter((_,i)=>!picks.includes(i));pPlayerScore+=captured.length; if(!pTable.length)pPlayerScore+=1;$('pasoor-message').textContent=picks.length===1&&pTable.length===0?'جمع کردی! زمین را خالی کردی.':'کارت‌ها جمع شدند؛ نوبت کامپیوتر.'}else{pTable.push(c);$('pasoor-message').textContent='کارت روی زمین گذاشته شد؛ نوبت کامپیوتر.'}pHand.splice(idx,1);pRender();pBusy=true;setTimeout(()=>{if(pDeck.length)pHand.push(pDeck.shift());if(pHand.length===0&&pDeck.length===0){$('pasoor-message').textContent='این دست تمام شد! امتیازها: شما '+pPlayerScore+'، کامپیوتر '+pAiScore+'. برای دست جدید بزن.';pBusy=false;pRender();return}pAiMove();pBusy=false;pRender();if(pHand.length===0&&pDeck.length===0)$('pasoor-message').textContent='دست تمام شد! امتیاز شما '+pPlayerScore+' و کامپیوتر '+pAiScore+'.';},450)}
-function pAiMove(){if(!pHand.length)return;const c=pHand.shift();let i=pTable.findIndex(x=>x.v===c.v);if(i>=0){pTable.splice(i,1);pAiScore+=2}else if(c.v<=10){const comb=pCombos(11-c.v,4);if(comb.length){const chosen=comb[0].slice().sort((a,b)=>b-a);chosen.forEach(k=>pTable.splice(k,1));pAiScore+=chosen.length+1}else pTable.push(c)}else pTable.push(c)}
+// حکم چهار نفره: شما و بازیکن روبه‌رو در یک تیم هستید
+let pasoorStarted=false, hDeck=[], hHands=[[],[],[],[]], hTrick=[], hTrump=null, hLeader=0, hTurn=0, hTeamTricks=[0,0], hPhase='trump', hGameOver=false;
+const hSuits=['♠','♥','♦','♣'], hRanks=[{v:2,t:'۲'},{v:3,t:'۳'},{v:4,t:'۴'},{v:5,t:'۵'},{v:6,t:'۶'},{v:7,t:'۷'},{v:8,t:'۸'},{v:9,t:'۹'},{v:10,t:'۱۰'},{v:11,t:'سرباز'},{v:12,t:'بی‌بی'},{v:13,t:'شاه'},{v:14,t:'آس'}];
+function hShuffle(){hDeck=[];for(const su of hSuits)for(const r of hRanks)hDeck.push({s:su,v:r.v,t:r.t,id:su+r.v});for(let i=hDeck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[hDeck[i],hDeck[j]]=[hDeck[j],hDeck[i]]}}
+function hCard(c,disabled=false){return `<button type="button" class="playing-card ${c.s==='♥'||c.s==='♦'?'red-card':''}" data-card="${c.id}" ${disabled?'disabled':''}><span>${c.t}</span><b>${c.s}</b></button>`}
+function hRender(){
+ $('pasoor-table').innerHTML=hTrick.length?hTrick.map(x=>`<div class="hokm-play"><small>${['شما','حریف چپ','هم‌تیمی','حریف راست'][x.p]}</small>${hCard(x.c,true)}</div>`).join(''):'<span class="game-help" style="color:#d1fae5">کارت‌های دور بعدی اینجا قرار می‌گیرند</span>';
+ $('pasoor-hand').innerHTML=hHands[0].slice().sort((a,b)=>hSuits.indexOf(a.s)-hSuits.indexOf(b.s)||b.v-a.v).map(c=>hCard(c,hPhase!=='play'||hTurn!==0||hGameOver)).join('');
+ document.querySelectorAll('#pasoor-hand [data-card]').forEach(b=>b.addEventListener('click',()=>hUserPlay(b.dataset.card)));
+ $('pasoor-player-score').textContent=hTeamTricks[0].toLocaleString('fa-IR');$('pasoor-ai-score').textContent=hTeamTricks[1].toLocaleString('fa-IR');
+ ['hokm-user-count','hokm-left-count','hokm-top-count','hokm-right-count'].forEach((id,i)=>$(id).textContent=hHands[[0,1,2,3][i]].length+' کارت');
+ $('hokm-select').classList.toggle('hidden',hPhase!=='trump');
+}
+function pasoorNewGame(){
+ pasoorStarted=true;hShuffle();hHands=[[],[],[],[]];for(let round=0;round<5;round++)for(let p=0;p<4;p++)hHands[p].push(hDeck.shift());
+ hTrick=[];hTrump=null;hLeader=0;hTurn=0;hTeamTricks=[0,0];hPhase='trump';hGameOver=false;
+ $('pasoor-message').textContent='۵ کارت اول دستت را ببین و خال حکم را انتخاب کن. شما و هم‌تیمی‌تان روبه‌روی هم هستید.';
+ hRender();
+}
+function hFinishTrump(suit){if(hPhase!=='trump')return;hTrump=suit;for(let round=0;round<8;round++)for(let p=0;p<4;p++)hHands[p].push(hDeck.shift());hPhase='play';hTurn=hLeader;$('pasoor-message').textContent='حکم '+suit+' انتخاب شد. شما شروع می‌کنی؛ اگر از خال شروع‌شده کارت داری باید همان خال را بازی کنی.';hRender();if(hTurn!==0)hAiSequence()}
+document.querySelectorAll('[data-trump]').forEach(b=>b.addEventListener('click',()=>hFinishTrump(b.dataset.trump)));
+function hLegal(c,p=0){const lead=hTrick.length?hTrick[0].c.s:null;return !lead||!hHands[p].some(x=>x.s===lead)||c.s===lead}
+function hUserPlay(id){if(hPhase!=='play'||hTurn!==0||hGameOver)return;const ix=hHands[0].findIndex(c=>c.id===id);if(ix<0)return;const c=hHands[0][ix];if(!hLegal(c,0)){$('pasoor-message').textContent='از خال شروع‌شده کارت داری؛ باید همان خال را بازی کنی.';return}hPlayCard(0,ix);hAiSequence()}
+function hPlayCard(p,ix){const c=hHands[p].splice(ix,1)[0];hTrick.push({p,c});hTurn=(p+1)%4;hRender();if(hTrick.length===4)setTimeout(hResolveTrick,650)}
+function hAiSequence(){if(hPhase!=='play'||hGameOver||hTrick.length===4)return;if(hTurn===0){hRender();return}setTimeout(()=>{if(hPhase!=='play'||hGameOver||hTrick.length===4)return;const p=hTurn,lead=hTrick.length?hTrick[0].c.s:null;let options=hHands[p].map((c,i)=>({c,i}));if(lead&&options.some(x=>x.c.s===lead))options=options.filter(x=>x.c.s===lead);let chosen;if(!hTrick.length)chosen=options.sort((a,b)=>b.c.v-a.c.v)[0];else chosen=options[Math.floor(Math.random()*options.length)];hPlayCard(p,chosen.i);if(hTrick.length<4)hAiSequence()},480)}
+function hResolveTrick(){if(hTrick.length!==4)return;const lead=hTrick[0].c.s;function power(x){return (x.c.s===hTrump?100:0)+(x.c.s===lead?10:0)+x.c.v}const winner=hTrick.reduce((best,x)=>power(x)>power(best)?x:best).p;const team=winner%2===0?0:1;hTeamTricks[team]++;hLeader=winner;hTurn=winner;hTrick=[];if(hHands.every(hand=>hand.length===0)){hGameOver=true;hPhase='done';const won=hTeamTricks[0]>hTeamTricks[1]?0:1;$('pasoor-message').textContent=`دست تمام شد؛ تیم ${won===0?'شما':'حریف'} برنده شد (${hTeamTricks[0]} به ${hTeamTricks[1]} دور). برای بازی دوباره «بازی جدید» را بزن.`;hRender();return}$('pasoor-message').textContent=`این دور را ${['شما','حریف چپ','هم‌تیمی','حریف راست'][winner]} برد. ${winner===0?'نوبت شماست.': 'حریف شروع می‌کند.'}`;hRender();if(hTurn!==0)hAiSequence()}
 $('pasoor-new').addEventListener('click',pasoorNewGame);
 // بازی مار مستقل از نقشه
 const snakeCanvas=$('snake-board'), snakeCtx=snakeCanvas.getContext('2d');
@@ -221,7 +243,9 @@ function snakeStart(){clearInterval(snakeTimer);snake=[{x:Math.floor(COLS/2),y:M
 function snakeStep(){if(!snakeRunning)return;snakeDir=snakeNext;const head={x:snake[0].x+snakeDir.x,y:snake[0].y+snakeDir.y};if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some((p,i)=>i<snake.length-1&&p.x===head.x&&p.y===head.y)){snakeRunning=false;clearInterval(snakeTimer);$('snake-message').textContent='بازی تمام شد! امتیاز شما: '+snakeScore+' — برای شروع دوباره دکمه را بزن.';snakeDraw();return}snake.unshift(head);if(head.x===snakeFood.x&&head.y===snakeFood.y){snakeScore++;$('snake-score').textContent=snakeScore.toLocaleString('fa-IR');snakeFoodNew()}else snake.pop();snakeDraw()}
 function snakeTurn(d){if(!snakeRunning)return;const dirs={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};const n=dirs[d];if(n&&!(n.x===-snakeDir.x&&n.y===-snakeDir.y))snakeNext=n}
 $('snake-start').addEventListener('click',snakeStart);document.querySelectorAll('.game-pad button').forEach(b=>b.addEventListener('click',()=>snakeTurn(b.dataset.dir)));
-document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();const mapKeys={'arrowup':'up','w':'up','arrowdown':'down','s':'down','arrowleft':'left','a':'left','arrowright':'right','d':'right'};if(mapKeys[k]&&document.activeElement!==$('city-search')){e.preventDefault();snakeTurn(mapKeys[k])}});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Enter'&&!gamePage.classList.contains('hidden')&&!snakeRunning){e.preventDefault();snakeStart();return}
+const k=e.key.toLowerCase();const mapKeys={'arrowup':'up','w':'up','arrowdown':'down','s':'down','arrowleft':'left','a':'left','arrowright':'right','d':'right'};if(mapKeys[k]&&document.activeElement!==$('city-search')){e.preventDefault();snakeTurn(mapKeys[k])}});
 snakeDraw();
 
 </script>
