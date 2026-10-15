@@ -1,4 +1,6 @@
-from flask import Flask, render_template_string, request, send_file, jsonify
+import os
+import secrets
+from flask import Flask, render_template_string, request, send_file, jsonify, session, redirect, url_for
 from io import BytesIO
 import random
 import time
@@ -7,6 +9,24 @@ import requests
 from openpyxl import load_workbook, Workbook
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', '')
+if not app.secret_key:
+    # Local development fallback only; set SECRET_KEY in Render environment variables.
+    app.secret_key = secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=os.environ.get('RENDER', '') == 'true',
+    PERMANENT_SESSION_LIFETIME=60 * 60 * 12,
+)
+
+LOGIN_HTML = r'''<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ورود | راه‌بر</title>
+<style>body{font-family:Tahoma,Arial,sans-serif;background:#f3f6fb;color:#172033;display:grid;place-items:center;min-height:100vh;margin:0}.box{background:#fff;padding:28px;border-radius:16px;width:min(360px,calc(100% - 56px));box-shadow:0 8px 30px #0001}h2{margin-top:0;color:#2457d6}.field{display:block;margin:16px 0}.field input{display:block;width:100%;padding:12px;margin-top:7px;border:1px solid #dce4ef;border-radius:8px;box-sizing:border-box;font:inherit}button{width:100%;padding:12px;background:#2457d6;color:#fff;border:0;border-radius:8px;font:inherit;cursor:pointer}.error{color:#c52b3a;font-size:13px}</style></head>
+<body><form class="box" method="post" action="/login"><h2>🧭 ورود به راه‌بر</h2><p>برای استفاده از نقشه و ابزار باربرگ وارد شو.</p>
+<label class="field">نام کاربری<input name="username" required autocomplete="username" autofocus></label>
+<label class="field">رمز عبور<input name="password" type="password" required autocomplete="current-password"></label>
+<button type="submit">ورود</button>{% if error %}<p class="error">{{ error }}</p>{% endif %}</form></body></html>'''
 
 HTML = r'''<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -176,6 +196,39 @@ async function processExcel(){
 window.addEventListener('load',initializeMap);
 </script>
 </body></html>'''
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        expected_user = os.environ.get('SITE_USERNAME', '')
+        expected_password = os.environ.get('SITE_PASSWORD', '')
+        supplied_user = request.form.get('username', '')
+        supplied_password = request.form.get('password', '')
+        if (expected_user and expected_password and
+                secrets.compare_digest(supplied_user, expected_user) and
+                secrets.compare_digest(supplied_password, expected_password)):
+            session.clear()
+            session.permanent = True
+            session['logged_in'] = True
+            return redirect(url_for('home'))
+        return render_template_string(LOGIN_HTML, error='نام کاربری یا رمز عبور اشتباه است.'), 401
+    return render_template_string(LOGIN_HTML, error='')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+
+@app.before_request
+def require_login():
+    # Login page is the only public application route. Protects APIs and image downloads too.
+    if request.endpoint in ('login',):
+        return None
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
 
 @app.route('/')
 def home():
@@ -494,4 +547,4 @@ def process_excel():
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=False)
