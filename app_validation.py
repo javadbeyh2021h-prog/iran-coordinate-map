@@ -78,7 +78,18 @@ function initializeMap(){
   restorePoints();renderSavedRoutes();
 }
 function selectMode(which){mode=which;setStatus(which==='origin'?'حالت انتخاب مبدأ فعال شد؛ روی نقشه کلیک کن.':'حالت انتخاب مقصد فعال شد؛ روی نقشه کلیک کن.');}
-function setPoint(which,lat,lng,zoom){const p=points[which];if(p.marker)map.removeLayer(p.marker);p.lat=lat;p.lng=lng;p.marker=L.marker([lat,lng]).addTo(map).bindPopup(which==='origin'?'مبدأ':'مقصد');document.getElementById(which+'Lat').textContent=lat.toFixed(6);document.getElementById(which+'Lng').textContent=lng.toFixed(6);if(zoom)map.setView([lat,lng],Math.max(map.getZoom(),10));savePoints();clearRouteDisplay();if(validPoint(points.origin)&&validPoint(points.destination))calculateRoute();}
+function pointIcon(which){
+  const color = which === 'origin' ? '#1769ff' : '#e53935';
+  const label = which === 'origin' ? 'م' : 'مق';
+  return L.divIcon({
+    className: 'rahbar-point-icon',
+    html: '<div style="width:30px;height:30px;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:'+color+';box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);color:white;font:bold 11px Tahoma">'+label+'</span></div>',
+    iconSize: [30, 36],
+    iconAnchor: [15, 34],
+    popupAnchor: [0, -30]
+  });
+}
+function setPoint(which,lat,lng,zoom){const p=points[which];if(p.marker)map.removeLayer(p.marker);p.lat=lat;p.lng=lng;p.marker=L.marker([lat,lng],{icon:pointIcon(which)}).addTo(map).bindPopup(which==='origin'?'مبدأ':'مقصد');document.getElementById(which+'Lat').textContent=lat.toFixed(6);document.getElementById(which+'Lng').textContent=lng.toFixed(6);if(zoom)map.setView([lat,lng],Math.max(map.getZoom(),10));savePoints();clearRouteDisplay();if(validPoint(points.origin)&&validPoint(points.destination))calculateRoute();}
 function savePoints(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({origin:{lat:points.origin.lat,lng:points.origin.lng},destination:{lat:points.destination.lat,lng:points.destination.lng}}))}catch(e){}}
 function restorePoints(){try{const data=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');if(!data)return;['origin','destination'].forEach(k=>{if(data[k]&&Number.isFinite(data[k].lat)&&Number.isFinite(data[k].lng))setPoint(k,data[k].lat,data[k].lng,false)});if(validPoint(points.origin)&&validPoint(points.destination)){const group=L.featureGroup([points.origin.marker,points.destination.marker]);map.fitBounds(group.getBounds().pad(.2));calculateRoute();}else if(validPoint(points.origin))map.setView([points.origin.lat,points.origin.lng],10);else if(validPoint(points.destination))map.setView([points.destination.lat,points.destination.lng],10);}catch(e){}}
 async function searchPlace(which){const input=document.getElementById(which==='origin'?'originSearch':'destinationSearch');const query=input.value.trim();if(!query){setStatus('نام شهر، روستا یا مکان را وارد کن.');input.focus();return;}setStatus('در حال جست‌وجوی مکان...');try{const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=ir&q='+encodeURIComponent(query);const response=await fetch(url,{headers:{'Accept-Language':'fa'}});if(!response.ok)throw Error('search failed');const results=await response.json();if(!results.length){setStatus('مکانی پیدا نشد؛ نام دیگری امتحان کن یا روی نقشه انتخاب کن.');return;}let result=results[0];if(results.length>1){const choices=results.map((r,i)=>(i+1)+'. '+r.display_name).join('\n');const answer=prompt('شماره مکان موردنظر را انتخاب کن:\n'+choices,'1');if(answer===null)return;const index=Number(answer)-1;if(!Number.isInteger(index)||index<0||index>=results.length){alert('شماره انتخابی معتبر نیست.');return;}result=results[index];}input.value=result.display_name;setPoint(which,Number(result.lat),Number(result.lon),true);setStatus((which==='origin'?'مبدأ':'مقصد')+' پیدا و روی نقشه ثبت شد.');}catch(e){setStatus('جست‌وجو ناموفق بود. اتصال اینترنت یا سرویس جست‌وجو را بررسی کن.');}}
@@ -303,7 +314,7 @@ def validate_route():
         reason = 'سرویس آدرس عمومی هر دو نقطه را به یک نام محدوده نسبت داده است؛ این اثبات حضور داخل مرز رسمی شهر نیست.'
     elif city_origin and city_destination:
         result = 'نیازمند بررسی'
-        reason = 'نام محدوده‌های برگشتی متفاوت‌اند؛ مرز رسمی و شرایط باربرگ باید بررسی شود.'
+        reason = 'سرویس نقشه برای دو نقطه نام‌های متفاوتی برگردانده است؛ این تفاوت به‌تنهایی ثابت نمی‌کند نقاط در دو شهر جدا هستند. برای تشخیص قطعی باید مرز رسمی شهر بررسی شود.'
     else:
         result = 'نیازمند بررسی'
         reason = 'نام محدوده یکی از نقاط از سرویس نقشه قابل تشخیص نبود.'
