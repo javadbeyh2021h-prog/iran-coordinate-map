@@ -90,16 +90,14 @@ async function validateCurrentRoute(){
   if(!validPoint(points.origin)||!validPoint(points.destination)){status.textContent='ابتدا مبدأ و مقصد را انتخاب کن.';return;}
   status.textContent='در حال بررسی نام محدوده و فاصله مسیر...';
   try{
-    const response=await fetch('/validate_route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-  origin: {
-    lat: points.origin.lat,
-    lng: points.origin.lng
-  },
-  destination: {
-    lat: points.destination.lat,
-    lng: points.destination.lng
-  }
-}):points.destination})});
+    const response=await fetch('/validate_route',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        origin:{lat:points.origin.lat,lng:points.origin.lng},
+        destination:{lat:points.destination.lat,lng:points.destination.lng}
+      })
+    });
     const data=await response.json();
     if(!response.ok)throw Error(data.error||'بررسی ناموفق بود.');
     status.textContent='نتیجه: '+data.result+' — '+data.reason+(data.city_origin?' نام محدوده مبدأ: '+data.city_origin+'.':'')+(data.city_destination?' نام محدوده مقصد: '+data.city_destination+'.':'')+(data.road_km!==null&&data.road_km!==undefined?' فاصله جاده‌ای تقریبی: '+Number(data.road_km).toLocaleString('fa-IR',{maximumFractionDigits:1})+' کیلومتر.':'')+' این نتیجه تأیید رسمی نیست.';
@@ -146,10 +144,16 @@ def home():
 
 @app.route('/iran-map.png')
 def iran_map_image():
-    return send_file(
-        app.root_path + '/iran-map.png',
-        mimetype='image/png'
-    )
+    # Support either filename used in the repository.
+    from pathlib import Path
+    candidates = [
+        Path(app.root_path) / 'iran-map.png',
+        Path(app.root_path) / 'iran-map.png.png',
+    ]
+    for image_path in candidates:
+        if image_path.is_file():
+            return send_file(image_path, mimetype='image/png')
+    return ('تصویر نقشه در مخزن پیدا نشد.', 404)
 
 
 # Province code mapping based on commonly published Iranian private-car plate code tables.
