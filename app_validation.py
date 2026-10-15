@@ -262,18 +262,92 @@ def roughly_in_iran(lat, lon):
 
 
 def reverse_place(lat, lon):
-    response = requests.get(
-        'https://nominatim.openstreetmap.org/reverse',
-        params={'format':'jsonv2', 'lat':lat, 'lon':lon, 'zoom':10, 'addressdetails':1},
-        headers={'User-Agent':'RahbarIranRouteChecker/1.0 (preliminary route screening)'},
-        timeout=8
-    )
-    response.raise_for_status()
-    data = response.json()
-    address = data.get('address') or {}
-    city = (address.get('city') or address.get('town') or address.get('municipality') or
-            address.get('city_district') or address.get('village') or address.get('county') or '')
-    return city
+    """Best-effort display label only; never use this label as boundary proof."""
+    try:
+        response = requests.get(
+            'https://nominatim.openstreetmap.org/reverse',
+            params={'format': 'jsonv2', 'lat': lat, 'lon': lon, 'zoom': 10, 'addressdetails': 1},
+            headers={'User-Agent': 'RahbarIranRouteChecker/1.1 (preliminary route screening)'},
+            timeout=4
+        )
+        response.raise_for_status()
+        address = response.json().get('address') or {}
+        return (address.get('city') or address.get('town') or address.get('municipality') or
+                address.get('city_district') or address.get('village') or address.get('county') or '')
+    except (requests.RequestException, ValueError, TypeError):
+        return ''
+
+
+# OSM relation 9167537 is the Amol city boundary shown by the user.
+# Keep it cached in memory after the first successful retrieval.
+_AMOL_BOUNDARY = None
+_AMOL_BOUNDARY_TRIED = False
+
+
+def _load_amol_boundary():
+    global _AMOL_BOUNDARY, _AMOL_BOUNDARY_TRIED
+    if _AMOL_BOUNDARY_TRIED:
+        return _AMOL_BOUNDARY
+    _AMOL_BOUNDARY_TRIED = True
+    urls = [
+        'https://polygons.openstreetmap.fr/get_geojson.py?id=9167537&params=0',
+    ]
+    for url in urls:
+        try:
+            response = requests.get(url, headers={'User-Agent': 'RahbarIranRouteChecker/1.1'}, timeout=6)
+            response.raise_for_status()
+            data = response.json()
+            # Accept Feature, FeatureCollection, GeometryCollection, Polygon, or MultiPolygon.
+            geometries = []
+            def collect(obj):
+                if not isinstance(obj, dict):
+                    return
+                typ = obj.get('type')
+                if typ == 'FeatureCollection':
+                    for feature in obj.get('features', []): collect(feature)
+                elif typ == 'Feature':
+                    collect(obj.get('geometry'))
+                elif typ == 'GeometryCollection':
+                    for geom in obj.get('geometries', []): collect(geom)
+                elif typ in ('Polygon', 'MultiPolygon') and obj.get('coordinates'):
+                    geometries.append(obj)
+            collect(data)
+            if geometries:
+                _AMOL_BOUNDARY = geometries
+                return _AMOL_BOUNDARY
+        except (requests.RequestException, ValueError, TypeError):
+            continue
+    return None
+
+
+def _point_in_ring(lon, lat, ring):
+    inside = False
+    if not ring or len(ring) < 3:
+        return False
+    j = len(ring) - 1
+    for i in range(len(ring)):
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        if ((yi > lat) != (yj > lat)):
+            x_cross = (xj - xi) * (lat - yi) / ((yj - yi) or 1e-15) + xi
+            if lon < x_cross:
+                inside = not inside
+        j = i
+    return inside
+
+
+def _point_in_amol(lon, lat, geometries):
+    for geometry in geometries:
+        typ = geometry.get('type')
+        coords = geometry.get('coordinates') or []
+        polygons = [coords] if typ == 'Polygon' else coords if typ == 'MultiPolygon' else []
+        for polygon in polygons:
+            # First ring is the outside; later rings are holes.
+            if polygon and _point_in_ring(lon, lat, polygon[0]) and not any(
+                _point_in_ring(lon, lat, hole) for hole in polygon[1:]
+            ):
+                return True
+    return False
 
 
 @app.route('/validate_route', methods=['POST'])
@@ -290,35 +364,44 @@ def validate_route():
         return jsonify(error='مقادیر مختصات خارج از بازه مجاز هستند.'), 400
     if not (roughly_in_iran(olat, olon) and roughly_in_iran(dlat, dlon)):
         return jsonify(result='ناسازگار از نظر موقعیت', reason='حداقل یکی از نقاط خارج از محدوده جغرافیایی تقریبی ایران است؛ این محدوده فقط غربالگری کلی است.', city_origin='', city_destination='', road_km=None)
-    city_origin = city_destination = ''
+
+    # Reverse geocoding is only for helpful labels, not for deciding inside/outside.
+    city_origin = reverse_place(olat, olon)
+    city_destination = reverse_place(dlat, dlon)
     road_km = None
-    try:
-        city_origin = reverse_place(olat, olon)
-        time.sleep(1.1)  # Respect public Nominatim rate limits.
-        city_destination = reverse_place(dlat, dlon)
-    except requests.RequestException:
-        pass
+    duration_min = None
     try:
         route_response = requests.get(
             f'https://router.project-osrm.org/route/v1/driving/{olon},{olat};{dlon},{dlat}',
-            params={'overview':'false'}, timeout=8
+            params={'overview': 'false'}, timeout=6
         )
         route_response.raise_for_status()
         route_data = route_response.json()
         if route_data.get('code') == 'Ok' and route_data.get('routes'):
-            road_km = round(route_data['routes'][0]['distance'] / 1000, 2)
+            route = route_data['routes'][0]
+            road_km = round(route['distance'] / 1000, 2)
+            duration_min = round(route['duration'] / 60)
     except (requests.RequestException, ValueError, KeyError, TypeError):
         pass
-    if city_origin and city_destination and city_origin == city_destination:
-        result = 'سازگار اولیه'
-        reason = 'سرویس آدرس عمومی هر دو نقطه را به یک نام محدوده نسبت داده است؛ این اثبات حضور داخل مرز رسمی شهر نیست.'
-    elif city_origin and city_destination:
+
+    boundary = _load_amol_boundary()
+    if boundary is None:
         result = 'نیازمند بررسی'
-        reason = 'سرویس نقشه برای دو نقطه نام‌های متفاوتی برگردانده است؛ این تفاوت به‌تنهایی ثابت نمی‌کند نقاط در دو شهر جدا هستند. برای تشخیص قطعی باید مرز رسمی شهر بررسی شود.'
+        reason = 'مرز نقشه‌ای آمل از سرویس عمومی دریافت نشد؛ برای جلوگیری از نتیجه اشتباه، داخل یا خارج بودن نقاط تأیید نشد. دوباره تلاش کن.'
     else:
-        result = 'نیازمند بررسی'
-        reason = 'سرویس نقشه نام محدوده یکی از نقاط را برنگرداند؛ این به‌تنهایی به معنی خارج بودن نقطه از شهر نیست. نام‌های برگشتی به‌صورت ناقص هستند؛ برای تأیید قطعی باید مرز رسمی شهر بررسی شود.'
-    return jsonify(result=result, reason=reason, city_origin=city_origin, city_destination=city_destination, road_km=road_km)
+        origin_inside = _point_in_amol(olon, olat, boundary)
+        destination_inside = _point_in_amol(dlon, dlat, boundary)
+        if origin_inside and destination_inside:
+            result = 'داخل محدوده نقشه‌ای آمل'
+            reason = 'هر دو نقطه بر اساس مرز ثبت‌شده در OpenStreetMap داخل محدوده نقشه‌ای آمل قرار دارند. این بررسی جایگزین مرز رسمی شهرداری یا تأیید سامانه باربرگ نیست.'
+        elif not origin_inside and not destination_inside:
+            result = 'نیازمند بررسی'
+            reason = 'هر دو نقطه خارج از مرز نقشه‌ای انتخاب‌شده برای شهر آمل هستند؛ این نتیجه به معنی رد رسمی باربرگ نیست.'
+        else:
+            result = 'نیازمند بررسی'
+            reason = 'یکی از نقاط داخل و دیگری خارج از مرز نقشه‌ای آمل قرار دارد؛ این نتیجه تأیید رسمی باربرگ نیست.'
+    return jsonify(result=result, reason=reason, city_origin=city_origin, city_destination=city_destination,
+                   road_km=road_km, duration_min=duration_min)
 
 
 @app.route('/process_excel', methods=['POST'])
