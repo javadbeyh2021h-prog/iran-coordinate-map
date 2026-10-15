@@ -5,6 +5,7 @@ from io import BytesIO
 import random
 import time
 import re
+import json
 import requests
 from openpyxl import load_workbook, Workbook
 
@@ -73,8 +74,8 @@ HTML = r'''<!DOCTYPE html>
     <div class="field-card">
       <strong>فایل Excel باربرگ</strong>
       <input id="excelFile" type="file" accept=".xlsx,.xlsm">
-      <div class="buttons"><button onclick="processExcel()">بررسی مختصات موجود و دریافت گزارش</button><button class="green" onclick="generateCoordinatesExcel()">ساخت مختصات جدید از روی کد پلاک ستون Q</button></div>
-      <p class="status" id="excelStatus">برای بررسی، مختصات I تا L حفظ می‌شوند. برای ساخت مختصات جدید، کد پلاک دو رقمی ستون Q خوانده می‌شود.</p>
+      <div class="buttons"><button onclick="processExcel()">بررسی مختصات موجود و دریافت گزارش</button><button class="green" onclick="generateCoordinatesExcel()">ساخت مختصات جدید از روی کد پلاک ستون N</button></div>
+      <p class="status" id="excelStatus">برای بررسی، مختصات I تا L حفظ می‌شوند. برای ساخت مختصات جدید، کد پلاک دو رقمی ستون N خوانده می‌شود.</p>
       <a id="excelDownload" class="hidden" style="display:inline-block;margin-top:8px;color:var(--primary);font-weight:bold" href="#">دانلود فایل آماده‌شده</a>
     </div>
   </section>
@@ -199,13 +200,13 @@ async function generateCoordinatesExcel(){
   link.classList.add('hidden');
   if(!file){status.textContent='اول فایل اکسل را انتخاب کن.';return;}
   const form=new FormData();form.append('file',file);
-  status.textContent='در حال ساخت مختصات با فاصله مستقیم حداقل ۲۵ کیلومتر؛ فقط ستون‌های I تا L تغییر می‌کنند...';
+  status.textContent='در حال بررسی مرز استان و ساخت مختصات با فاصله مستقیم حداقل ۲۵ کیلومتر؛ فقط ستون‌های I تا L تغییر می‌کنند...';
   try{
     const response=await fetch('/generate_coordinates_excel',{method:'POST',body:form});
     if(!response.ok){let msg='ساخت مختصات ناموفق بود.';try{const j=await response.json();msg=j.error||msg}catch(e){}throw Error(msg)}
     const blob=await response.blob(), url=URL.createObjectURL(blob);
     link.href=url;link.download=file.name.toLowerCase().endsWith('.xlsm')?'barbarg_coordinates_updated.xlsm':'barbarg_coordinates_updated.xlsx';link.classList.remove('hidden');
-    status.textContent='فایل آماده است؛ فقط مختصات ستون‌های I تا L تغییر کرده و بقیه اطلاعات اکسل حفظ شده‌اند. فاصله مستقیم هدف حداقل ۲۵ کیلومتر است. اگر کد پلاک ناشناخته باشد، مختصات همان ردیف بدون تغییر می‌ماند.';
+    status.textContent='فایل آماده است؛ فقط مختصات ستون‌های I تا L تغییر کرده و بقیه اطلاعات اکسل حفظ شده‌اند. فاصله مستقیم هدف حداقل ۲۵ کیلومتر است. نقاط با مرز نقشه‌ای استان از داده‌های OpenStreetMap بررسی می‌شوند؛ اگر کد پلاک یا مرز استان قابل تشخیص نباشد، مختصات همان ردیف بدون تغییر می‌ماند.';
   }catch(e){status.textContent='خطا: '+e.message;}
 }
 
@@ -282,6 +283,125 @@ PLATE_PROVINCES = {
     # Other provinces
     18:"همدان",28:"همدان",19:"کرمانشاه",29:"کرمانشاه",39:"کرمانشاه",31:"لرستان",41:"لرستان",51:"کردستان",61:"کردستان",47:"مرکزی",57:"مرکزی",48:"بوشهر",58:"بوشهر",71:"چهارمحال و بختیاری",81:"چهارمحال و بختیاری",79:"قزوین",89:"قزوین",84:"هرمزگان",94:"هرمزگان",85:"سیستان و بلوچستان",95:"سیستان و بلوچستان",86:"سمنان",96:"سمنان",87:"زنجان",97:"زنجان",91:"اردبیل",98:"ایلام",49:"کهگیلویه و بویراحمد",59:"گلستان",69:"گلستان",54:"یزد",64:"یزد",16:"قم"
 }
+
+# Province boundary data is sourced from OpenStreetMap-derived GeoJSON.
+# If the boundary service cannot be reached, generation fails closed instead of
+# guessing points from city-center rectangles.
+PROVINCE_BOUNDARY_URL = (
+    'https://raw.githubusercontent.com/ssepehrnoush/'
+    'Iran-geojson-map-boundaries/master/ir_states_boundaries_coordinates.geojson'
+)
+_BOUNDARY_FEATURES = None
+_BOUNDARY_TRIED = False
+
+PROVINCE_ISO = {
+    "آذربایجان شرقی":"IR-01", "آذربایجان غربی":"IR-02", "اردبیل":"IR-03",
+    "اصفهان":"IR-04", "ایلام":"IR-05", "بوشهر":"IR-06", "تهران":"IR-07",
+    "چهارمحال و بختیاری":"IR-08", "البرز":"IR-09", "خوزستان":"IR-10",
+    "زنجان":"IR-11", "سمنان":"IR-12", "سیستان و بلوچستان":"IR-13",
+    "فارس":"IR-14", "کرمان":"IR-15", "کردستان":"IR-16", "کرمانشاه":"IR-17",
+    "کهگیلویه و بویراحمد":"IR-18", "گیلان":"IR-19", "لرستان":"IR-20",
+    "مازندران":"IR-21", "مرکزی":"IR-22", "هرمزگان":"IR-23", "همدان":"IR-24",
+    "یزد":"IR-25", "قم":"IR-26", "گلستان":"IR-27", "قزوین":"IR-28",
+    "خراسان جنوبی":"IR-29", "خراسان رضوی":"IR-30", "خراسان شمالی":"IR-31",
+}
+
+def load_province_boundaries():
+    global _BOUNDARY_FEATURES, _BOUNDARY_TRIED
+    if _BOUNDARY_FEATURES is not None:
+        return _BOUNDARY_FEATURES
+    if _BOUNDARY_TRIED:
+        return None
+    _BOUNDARY_TRIED = True
+    try:
+        response = requests.get(PROVINCE_BOUNDARY_URL,
+            headers={'User-Agent': 'RahbarIranCoordinateApp/1.0'},
+            timeout=12)
+        response.raise_for_status()
+        data = response.json()
+        features = data.get('features', [])
+        if not features:
+            return None
+        _BOUNDARY_FEATURES = features
+        return features
+    except (requests.RequestException, ValueError, TypeError):
+        return None
+
+def _feature_iso(feature):
+    props = feature.get('properties') or {}
+    for key in ('ISO3166-2', 'iso_3166_2', 'ISO3166_2', 'iso'):
+        value = props.get(key)
+        if value:
+            return str(value).strip().upper()
+    return ''
+
+def _all_rings(geometry):
+    if not isinstance(geometry, dict):
+        return
+    typ = geometry.get('type')
+    coords = geometry.get('coordinates') or []
+    if typ == 'Polygon':
+        for ring in coords:
+            yield ring
+    elif typ == 'MultiPolygon':
+        for polygon in coords:
+            for ring in polygon:
+                yield ring
+
+def _point_inside_ring(lon, lat, ring):
+    inside = False
+    if not ring or len(ring) < 3:
+        return False
+    j = len(ring) - 1
+    for i, point in enumerate(ring):
+        xi, yi = point[0], point[1]
+        xj, yj = ring[j][0], ring[j][1]
+        if (yi > lat) != (yj > lat):
+            cross = (xj-xi) * (lat-yi) / ((yj-yi) or 1e-15) + xi
+            if lon < cross:
+                inside = not inside
+        j = i
+    return inside
+
+def _point_inside_geometry(lon, lat, geometry):
+    if not isinstance(geometry, dict):
+        return False
+    typ = geometry.get('type')
+    coords = geometry.get('coordinates') or []
+    polygons = [coords] if typ == 'Polygon' else coords if typ == 'MultiPolygon' else []
+    for polygon in polygons:
+        if polygon and _point_inside_ring(lon, lat, polygon[0]):
+            if not any(_point_inside_ring(lon, lat, hole) for hole in polygon[1:]):
+                return True
+    return False
+
+def make_pair_in_province(province, minimum_km=25):
+    iso = PROVINCE_ISO.get(province)
+    features = load_province_boundaries()
+    if not iso or not features:
+        return None
+    feature = next((f for f in features if _feature_iso(f) == iso), None)
+    if not feature:
+        return None
+    geometry = feature.get('geometry') or {}
+    coords = []
+    for ring in _all_rings(geometry):
+        coords.extend((float(pt[0]), float(pt[1])) for pt in ring if len(pt) >= 2)
+    if not coords:
+        return None
+    min_lon = min(pt[0] for pt in coords); max_lon = max(pt[0] for pt in coords)
+    min_lat = min(pt[1] for pt in coords); max_lat = max(pt[1] for pt in coords)
+    for _ in range(12000):
+        a = (random.uniform(min_lat, max_lat), random.uniform(min_lon, max_lon))
+        b = (random.uniform(min_lat, max_lat), random.uniform(min_lon, max_lon))
+        if not (_point_inside_geometry(a[1], a[0], geometry) and
+                _point_inside_geometry(b[1], b[0], geometry)):
+            continue
+        distance = straight_distance_km(a, b)
+        if distance >= minimum_km:
+            return a, b, distance, province
+    return None
+
 # Approximate city centers and sampling envelopes. These are seed areas, not official city boundaries.
 # A wider envelope allows finding two points at least 20 km apart, but points are approximate.
 PROVINCE_CITIES = {
@@ -522,29 +642,19 @@ def generate_coordinates_excel():
         # columns, formatting, formulas, and other data. Only I:L values are changed.
         source_wb = load_workbook(file, data_only=False, read_only=False, keep_vba=keep_vba)
         source_ws = source_wb.active
-        if source_ws.max_column < 17:
+        if source_ws.max_column < 14:
             source_wb.close()
-            return jsonify(error='ستون Q در فایل پیدا نشد. فایل باید کد پلاک را در ستون Q داشته باشد.'), 400
+            return jsonify(error='ستون N در فایل پیدا نشد. فایل باید کد پلاک استان را در ستون N داشته باشد.'), 400
 
         generated = 0
         failed = 0
         for row_num in range(2, source_ws.max_row + 1):
-            raw_code = source_ws.cell(row_num, 17).value
+            raw_code = source_ws.cell(row_num, 14).value
             normalized = normalize_digits(raw_code)
-            match = re.search(r'(?<!\d)(\d{2})(?!\d)', normalized)
-            code = int(match.group(1)) if match else None
+            digits = re.findall(r'\d', normalized)
+            code = int(''.join(digits[-2:])) if len(digits) >= 2 else None
             province = PLATE_PROVINCES.get(code) if code is not None else None
-            pair = None
-            if province:
-                cities = PROVINCE_CITIES.get(province, [])
-                if cities:
-                    # Try several seed cities in the province before marking failure.
-                    candidates = cities[:]
-                    random.shuffle(candidates)
-                    for city in candidates:
-                        pair = make_pair(city, minimum_km=25)
-                        if pair:
-                            break
+            pair = make_pair_in_province(province, minimum_km=25) if province else None
             if not pair:
                 # Leave the original I:L values unchanged when code/pair is unknown.
                 failed += 1
@@ -570,7 +680,7 @@ def generate_coordinates_excel():
         response.headers['X-Coordinates-Unchanged'] = str(failed)
         return response
     except Exception as e:
-        return jsonify(error='ساخت فایل مختصات انجام نشد. ستون Q باید کد پلاک داشته باشد و فایل Excel سالم باشد. جزئیات: ' + str(e)), 500
+        return jsonify(error='ساخت فایل مختصات انجام نشد. ستون N باید کد استانِ پلاک داشته باشد و فایل Excel سالم باشد. جزئیات: ' + str(e)), 500
 
 
 @app.route('/process_excel', methods=['POST'])
