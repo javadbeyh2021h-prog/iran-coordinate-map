@@ -108,6 +108,83 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 .face-card .card-corner{z-index:2;background:#ffffffdc;border-radius:3px;padding:1px 2px}
 .face-card .face-art{position:relative}
 @media(max-width:600px){.face-card .face-art{height:65%;padding:1px}.face-card .face-portrait{width:100%;height:100%}}
+
+/* Dalahoo Professional Refresh — visual-only layer; gameplay and routes stay unchanged */
+:root{
+ --primary:#4f46e5;--success:#059669;--danger:#e11d48;
+ --bg:#f4f6fb;--card:#ffffff;--text:#172033;--muted:#667085;--border:#e5e9f2;
+ --shadow-soft:0 12px 32px rgba(25,35,75,.075);--shadow-hover:0 18px 42px rgba(25,35,75,.14)
+}
+html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse at 12% 0%,#e5e9ff 0,transparent 36%),radial-gradient(ellipse at 92% 12%,#d9f7ed 0,transparent 28%),var(--bg);min-height:100vh}
+header{background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid rgba(226,232,240,.85);box-shadow:0 5px 24px rgba(15,23,42,.045);padding:20px}
+h1{font-size:clamp(22px,3vw,30px);letter-spacing:-.4px;background:linear-gradient(100deg,#4338ca,#0f766e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.subtitle{font-size:13px;letter-spacing:.1px}
+.live{box-shadow:0 4px 12px #10b98112;font-weight:800}
+.dash-wrap{max-width:1180px;margin:32px auto;padding-bottom:48px}
+.dash-welcome{position:relative;isolation:isolate;overflow:hidden;padding:clamp(24px,4vw,42px);border:1px solid #ffffff40;background:linear-gradient(118deg,#312e81 0%,#4f46e5 48%,#0f766e 100%);box-shadow:0 22px 48px rgba(49,46,129,.2)}
+.dash-welcome:after{content:"";position:absolute;z-index:-1;width:260px;height:260px;border:1px solid #ffffff26;border-radius:50%;left:-65px;top:-125px;box-shadow:0 0 0 30px #ffffff0a,0 0 0 65px #ffffff08}
+.dash-welcome h2{font-size:clamp(23px,3vw,32px);line-height:1.55}
+.dash-welcome p{max-width:760px;font-size:14px}
+.dash-grid{gap:18px;margin-top:24px}
+.dash-tile{position:relative;overflow:hidden;min-height:178px;padding:23px;background:rgba(255,255,255,.94);border:1px solid #e4e8f2;border-radius:22px;box-shadow:var(--shadow-soft);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.dash-tile:before{content:"";position:absolute;inset:0 0 auto;height:4px;background:linear-gradient(90deg,#4f46e5,#14b8a6);opacity:.0;transition:opacity .2s ease}
+.dash-tile:hover{transform:translateY(-5px);box-shadow:var(--shadow-hover);border-color:#c7d2fe}
+.dash-tile:hover:before{opacity:1}
+.tile-icon{display:grid;place-items:center;width:58px;height:58px;margin:0 0 15px;border-radius:18px;background:linear-gradient(135deg,#eef2ff,#dff7f0);font-size:31px;box-shadow:inset 0 0 0 1px #ffffff}
+.dash-tile strong{font-size:17px;line-height:1.7}
+.dash-tile span:last-child{font-size:13px;line-height:2}
+.card,.game-card,.poster-card{border-radius:22px;border-color:#e4e8f2;box-shadow:var(--shadow-soft)}
+.card,.game-card{padding:clamp(16px,2.5vw,24px)}
+.game-wrap{max-width:960px;margin-top:24px}
+.game-title,.section-title{letter-spacing:-.15px}
+.game-score{background:linear-gradient(135deg,#eef2ff,#e0f2fe);border:1px solid #dbeafe;color:#3730a3;border-radius:12px}
+button{transition:transform .16s ease,box-shadow .16s ease,filter .16s ease}
+button:hover:not(:disabled){filter:brightness(1.015)}
+button:active:not(:disabled){transform:translateY(1px)}
+.game-btn{background:linear-gradient(110deg,#4f46e5,#4338ca);box-shadow:0 6px 15px #4f46e526}
+.back-btn{border:1px solid #d8deeb;background:#fff;box-shadow:0 4px 12px #0f172a08}
+.copy-btn,.copy-all{border-radius:12px}
+.reset{background:linear-gradient(110deg,#475569,#1e293b)}
+input{background:#fbfcff;border-color:#dfe5f0;transition:border-color .16s ease,box-shadow .16s ease}
+input:focus{border-color:#818cf8;box-shadow:0 0 0 4px #6366f11a}
+.help{border-radius:14px;background:linear-gradient(110deg,#eff8ff,#f0fdfa);border-color:#cce8f8;border-right-color:#38bdf8}
+.info{border-radius:16px}
+.map-card{border-radius:22px}
+#map{border-radius:16px}
+.result{border-radius:18px}
+.stat{border-radius:14px;padding:15px}
+.pasoor-area{border-radius:18px}
+.hokm-table{border-radius:22px}
+#leaderboard-content table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--border);border-radius:14px;background:#fff}
+#leaderboard-content th{background:#eef2ff;color:#3730a3;font-weight:900}
+#leaderboard-content td,#leaderboard-content th{padding:12px 10px!important;text-align:right;white-space:nowrap}
+#leaderboard-content tr:hover td{background:#f8faff}
+.top-actions{margin-top:18px}
+:focus-visible{outline:3px solid #818cf8;outline-offset:3px}
+@media(max-width:991px){.dash-wrap{margin-top:20px}.map-card{height:58vh;border-radius:20px}}
+@media(max-width:600px){
+ header{padding:16px 12px}.live{margin-bottom:8px}
+ .dash-wrap{margin:18px auto;padding-left:12px;padding-right:12px}
+ .dash-welcome{border-radius:20px;padding:22px}
+ .dash-grid{grid-template-columns:1fr;gap:12px;margin-top:16px}
+ .dash-tile{min-height:0;padding:18px;border-radius:18px;display:grid;grid-template-columns:54px minmax(0,1fr);column-gap:14px;align-items:center}
+ .tile-icon{grid-row:1 / span 2;width:52px;height:52px;margin:0;font-size:28px;border-radius:15px}
+ .dash-tile strong{margin:0;font-size:16px}
+ .dash-tile span:last-child{font-size:12px;line-height:1.8}
+ .game-wrap{padding-left:12px;padding-right:12px;margin-top:14px}
+ .game-card{padding:15px;border-radius:18px}
+ .game-head{align-items:flex-start}
+ .game-title{font-size:16px}
+ .game-tools{gap:7px}
+ .game-btn{padding:10px 12px;font-size:12px}
+ .map-card{padding:8px;min-height:360px;height:52vh}
+ #map{min-height:340px}
+ #leaderboard-content{max-width:100%;overflow-x:auto}
+ #leaderboard-content td,#leaderboard-content th{padding:9px 8px!important;font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
 </style>
 </head>
 <body>
