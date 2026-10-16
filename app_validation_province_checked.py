@@ -1,7 +1,6 @@
 from flask import Flask, render_template_string, request, jsonify, send_file, copy_current_request_context
 import requests
 import math
-import re
 from pathlib import Path
 import os, sqlite3, hmac, html, secrets
 from concurrent.futures import ThreadPoolExecutor
@@ -254,7 +253,7 @@ input:focus{border-color:#818cf8;box-shadow:0 0 0 4px #6366f11a}
     <p style="margin:7px 0 0;font-size:12px;color:var(--muted);text-align:center">از چپ به راست: دو رقم، حرف، سه رقم و کد دو رقمی ایران</p>
    </div>
    <label style="grid-column:1/-1">کد امنیتی تصویر<input id="fuel-captcha" required autocomplete="off" placeholder="کد داخل تصویر کپچا" style="margin-top:7px"></label>
-   <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap"><button class="game-btn" type="button" id="fuel-get-captcha">دریافت / تازه‌سازی کپچا</button><button class="game-btn" type="submit">استعلام سهمیه</button></div>
+   <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap"><button class="game-btn" type="button" id="fuel-open-utcms">رفتن به UTCMS با اطلاعات واردشده</button><button class="game-btn" type="button" id="fuel-get-captcha">دریافت / تازه‌سازی کپچا</button><button class="game-btn" type="submit">استعلام سهمیه</button></div>
   </form>
   <div id="fuel-captcha-box" class="hidden" style="margin-top:14px;padding:10px;border:1px solid var(--border);border-radius:12px;text-align:center"><img id="fuel-captcha-image" alt="تصویر صفحه UTCMS شامل کپچا" style="max-width:100%;border:1px solid var(--border);border-radius:8px"></div>
   <div id="fuel-status" role="status" style="margin-top:14px;padding:12px;border-radius:10px;background:#eff6ff;color:#1d4ed8;line-height:1.9">برای شروع، تصویر کپچا را دریافت کنید.</div><div id="fuel-result" style="margin-top:14px;overflow:auto"></div>
@@ -290,6 +289,25 @@ function openPage(id){dashboard.classList.add('hidden');appPages.forEach(p=>p.cl
 document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.open)));
 
 const fuelStatus=$('fuel-status');function fuelMsg(t,ok=false){fuelStatus.textContent=t;fuelStatus.style.background=ok?'#f0fdf4':'#eff6ff';fuelStatus.style.color=ok?'#166534':'#1d4ed8'}
+// Open official UTCMS in a new tab and copy a compact summary of the entered fields.
+// UTCMS does not expose a confirmed prefill URL, so this avoids sending personal data in URL parameters.
+$('fuel-open-utcms').addEventListener('click',async()=>{
+ const data={
+  'شماره ملی / شناسه ملی':$('fuel-national').value.trim(),
+  'سال':$('fuel-year').value.trim(),
+  'ماه':$('fuel-month').value,
+  'نوع سهمیه':$('fuel-type').value,
+  'نوع پلاک':$('fuel-plate-type').value,
+  'پلاک':[$('fuel-plate-left').value.trim(),$('fuel-plate-letter').value,$('fuel-plate-middle').value.trim(),'ایران '+$('fuel-plate-code').value.trim()].filter(Boolean).join(' - ')
+ };
+ const missing=Object.entries(data).filter(([k,v])=>!v && k!=='نوع سهمیه' && k!=='نوع پلاک').map(([k])=>k);
+ if(missing.length){fuelMsg('ابتدا این موارد را کامل کنید: '+missing.join('، '));return}
+ const tab=window.open('https://utcms.ir/ShowFuelQuota.aspx','_blank','noopener');
+ if(!tab){fuelMsg('مرورگر بازشدن پنجره جدید را مسدود کرد؛ اجازه Pop-up را برای دالاهو فعال کنید.');return}
+ const summary=Object.entries(data).map(([k,v])=>k+': '+v).join('\n');
+ try{await navigator.clipboard.writeText(summary);fuelMsg('UTCMS باز شد و خلاصه اطلاعات کپی شد. فرم UTCMS را پر کنید و کپچا را همان‌جا تأیید کنید.',true)}
+ catch{fuelMsg('UTCMS باز شد. کپی خودکار ممکن نشد؛ اطلاعات واردشده را در دالاهو نگه دارید و فرم UTCMS را تکمیل کنید.')}
+});
 $('fuel-get-captcha').addEventListener('click',async()=>{fuelMsg('در حال اتصال به UTCMS…');try{const r=await fetch('/fuel/captcha',{method:'POST'});if(!r.ok){let d={};try{d=await r.json()}catch{}throw Error(d.error||'گرفتن کپچا ناموفق بود')}const blob=await r.blob();$('fuel-captcha-image').src=URL.createObjectURL(blob);$('fuel-captcha-box').classList.remove('hidden');fuelMsg('تصویر صفحه UTCMS نمایش داده شد؛ کد امنیتی را از روی تصویر وارد کنید.',true)}catch(e){fuelMsg(e.message)}});
 $('fuel-form').addEventListener('submit',async e=>{e.preventDefault();fuelMsg('در حال ارسال استعلام…');$('fuel-result').innerHTML='';const data={national_id:$('fuel-national').value.trim(),year:$('fuel-year').value.trim(),month:$('fuel-month').value,quota_type:$('fuel-type').value,plate_type:$('fuel-plate-type').value,plate_parts:{left:$('fuel-plate-left').value.trim(),letter:$('fuel-plate-letter').value,middle:$('fuel-plate-middle').value.trim(),code:$('fuel-plate-code').value.trim()},captcha:$('fuel-captcha').value.trim()};try{const r=await fetch('/fuel/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const d=await r.json();if(!r.ok)throw Error(d.error||'استعلام انجام نشد');if(!d.rows?.length){fuelMsg(d.message||'جدول نتیجه شناسایی نشد.');return}let h='<table style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#075e59;color:white"><th style="padding:10px">ردیف</th><th style="padding:10px">دوره</th><th style="padding:10px">سهمیه (لیتر)</th></tr></thead><tbody>';for(const x of d.rows)h+='<tr>'+[x.row,x.period,x.quota].map(v=>'<td style="padding:10px;border:1px solid var(--border)">'+String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</td>').join('')+'</tr>'; $('fuel-result').innerHTML=h+'</tbody></table>';fuelMsg('نتیجه استعلام دریافت شد.',true)}catch(e){fuelMsg(e.message)}});
 
