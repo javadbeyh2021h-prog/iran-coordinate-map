@@ -1,8 +1,8 @@
-from flask import Flask, render_template_string, request, jsonify, send_file
+from flask import Flask, render_template_string, request, jsonify, send_file, copy_current_request_context
 import requests
 import math
 from pathlib import Path
-import os, sqlite3, hmac, html, secrets
+import os, sqlite3, hmac, html, secrets, re
 from datetime import datetime, timezone
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -561,15 +561,30 @@ try:
 except Exception:
     sync_playwright = None
 import threading
+from concurrent.futures import ThreadPoolExecutor
+from functools import wraps
+
 _FUEL_SESSIONS = {}
 _FUEL_LOCK = threading.RLock()
 _FUEL_URL = "https://utcms.ir/ShowFuelQuota.aspx"
+# Playwright Sync API must run outside any asyncio event loop. Route work is
+# serialized on one dedicated worker so each persistent browser session is
+# created and used on the same thread.
+_FUEL_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="fuel-playwright")
+
+def _fuel_thread(view):
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        view_with_context = copy_current_request_context(view)
+        return _FUEL_EXECUTOR.submit(view_with_context, *args, **kwargs).result()
+    return wrapper
 
 def _fuel_sid():
     sid=request.cookies.get("dalahoo_fuel_sid","")
     return sid if len(sid)==32 and all(c in "0123456789abcdef" for c in sid) else secrets.token_hex(16)
 
 @app.post("/fuel/captcha")
+@_fuel_thread
 def fuel_captcha():
     if sync_playwright is None:
         return jsonify(error="Playwright نصب نیست؛ requirements و نصب Chromium را در Render بررسی کنید."),503
@@ -593,6 +608,7 @@ def fuel_captcha():
             return jsonify(error="اتصال به UTCMS ناموفق بود: "+str(e)[:180]),502
 
 @app.post("/fuel/submit")
+@_fuel_thread
 def fuel_submit():
     if sync_playwright is None: return jsonify(error="Playwright در محیط اجرا نصب نیست."),503
     sid=request.cookies.get("dalahoo_fuel_sid",""); d=request.get_json(silent=True) or {}
