@@ -239,7 +239,17 @@ input:focus{border-color:#818cf8;box-shadow:0 0 0 4px #6366f11a}
    <label>ماه<select id="fuel-month" required style="width:100%;padding:13px;margin-top:7px;border:2px solid var(--border);border-radius:12px"><option value="">انتخاب ماه</option><option>فروردین</option><option>اردیبهشت</option><option>خرداد</option><option>تیر</option><option>مرداد</option><option>شهریور</option><option>مهر</option><option>آبان</option><option>آذر</option><option>دی</option><option>بهمن</option><option>اسفند</option></select></label>
    <label>نوع سهمیه<select id="fuel-type" style="width:100%;padding:13px;margin-top:7px;border:2px solid var(--border);border-radius:12px"><option>پایه</option><option>عملکردی</option></select></label>
    <label>نوع پلاک<select id="fuel-plate-type" style="width:100%;padding:13px;margin-top:7px;border:2px solid var(--border);border-radius:12px"><option>پلاک ملی</option><option>منطقه آزاد</option></select></label>
-   <label>شماره پلاک<input id="fuel-plate" required autocomplete="off" placeholder="شماره پلاک مطابق سامانه" style="margin-top:7px"></label>
+   <div style="grid-column:1/-1;min-width:0">
+    <label for="fuel-plate-left" style="display:block;margin-bottom:8px">شماره پلاک — مطابق چیدمان پلاک ملی UTCMS</label>
+    <div dir="ltr" style="display:flex;align-items:stretch;justify-content:center;max-width:460px;margin:0 auto;border:2px solid #202b35;border-radius:10px;overflow:hidden;background:#fff;min-height:62px">
+     <div aria-hidden="true" style="width:28px;flex:0 0 28px;background:linear-gradient(to bottom,#159447 0 33%,#fff 33% 66%,#d92535 66%);border-right:1px solid #202b35;display:flex;align-items:center;justify-content:center;color:#123;font-size:8px;writing-mode:vertical-rl">IR.IRAN</div>
+     <input id="fuel-plate-left" class="plate-part" required inputmode="numeric" autocomplete="off" maxlength="2" pattern="[0-9۰-۹]{2}" aria-label="دو رقم سمت چپ پلاک" placeholder="۶۳" style="width:20%;min-width:0;border:0;border-radius:0;text-align:center;font-size:20px;font-weight:800;padding:8px 2px;color:#111;background:#fff">
+     <select id="fuel-plate-letter" class="plate-part" required aria-label="حرف پلاک" style="width:23%;min-width:0;border:0;border-left:1px solid #202b35;border-right:1px solid #202b35;border-radius:0;text-align:center;font-size:18px;padding:4px 0;color:#111;background:#fff"><option value="">حرف</option><option>الف</option><option>ب</option><option>پ</option><option>ت</option><option>ث</option><option>ج</option><option>چ</option><option>ح</option><option>خ</option><option>د</option><option>ذ</option><option>ر</option><option>ز</option><option>ژ</option><option>س</option><option>ش</option><option>ص</option><option>ض</option><option>ط</option><option>ظ</option><option>ع</option><option>غ</option><option>ف</option><option>ق</option><option>ک</option><option>گ</option><option>ل</option><option>م</option><option>ن</option><option>و</option><option>ه</option><option>ی</option><option>معلولین</option><option>تشریفات</option></select>
+     <input id="fuel-plate-middle" class="plate-part" required inputmode="numeric" autocomplete="off" maxlength="3" pattern="[0-9۰-۹]{3}" aria-label="سه رقم وسط پلاک" placeholder="۴۳۶" style="width:29%;min-width:0;border:0;border-radius:0;text-align:center;font-size:20px;font-weight:800;padding:8px 2px;color:#111;background:#fff">
+     <div style="width:24%;min-width:68px;border-left:2px solid #202b35;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#111;background:#fff"><span style="font-size:10px;font-weight:800">ایران</span><input id="fuel-plate-code" class="plate-part" required inputmode="numeric" autocomplete="off" maxlength="2" pattern="[0-9۰-۹]{2}" aria-label="کد دو رقمی ایران" placeholder="۷۲" style="width:100%;min-width:0;border:0;border-radius:0;text-align:center;font-size:18px;font-weight:800;padding:2px;color:#111;background:#fff"></div>
+    </div>
+    <p style="margin:7px 0 0;font-size:12px;color:var(--muted);text-align:center">از چپ به راست: دو رقم، حرف، سه رقم و کد دو رقمی ایران</p>
+   </div>
    <label style="grid-column:1/-1">کد امنیتی تصویر<input id="fuel-captcha" required autocomplete="off" placeholder="کد داخل تصویر کپچا" style="margin-top:7px"></label>
    <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap"><button class="game-btn" type="button" id="fuel-get-captcha">دریافت / تازه‌سازی کپچا</button><button class="game-btn" type="submit">استعلام سهمیه</button></div>
   </form>
@@ -278,7 +288,7 @@ document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',(
 
 const fuelStatus=$('fuel-status');function fuelMsg(t,ok=false){fuelStatus.textContent=t;fuelStatus.style.background=ok?'#f0fdf4':'#eff6ff';fuelStatus.style.color=ok?'#166534':'#1d4ed8'}
 $('fuel-get-captcha').addEventListener('click',async()=>{fuelMsg('در حال اتصال به UTCMS…');try{const r=await fetch('/fuel/captcha',{method:'POST'});if(!r.ok){let d={};try{d=await r.json()}catch{}throw Error(d.error||'گرفتن کپچا ناموفق بود')}const blob=await r.blob();$('fuel-captcha-image').src=URL.createObjectURL(blob);$('fuel-captcha-box').classList.remove('hidden');fuelMsg('تصویر صفحه UTCMS نمایش داده شد؛ کد امنیتی را از روی تصویر وارد کنید.',true)}catch(e){fuelMsg(e.message)}});
-$('fuel-form').addEventListener('submit',async e=>{e.preventDefault();fuelMsg('در حال ارسال استعلام…');$('fuel-result').innerHTML='';const data={national_id:$('fuel-national').value.trim(),year:$('fuel-year').value.trim(),month:$('fuel-month').value,quota_type:$('fuel-type').value,plate_type:$('fuel-plate-type').value,plate:$('fuel-plate').value.trim(),captcha:$('fuel-captcha').value.trim()};try{const r=await fetch('/fuel/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const d=await r.json();if(!r.ok)throw Error(d.error||'استعلام انجام نشد');if(!d.rows?.length){fuelMsg(d.message||'جدول نتیجه شناسایی نشد.');return}let h='<table style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#075e59;color:white"><th style="padding:10px">ردیف</th><th style="padding:10px">دوره</th><th style="padding:10px">سهمیه (لیتر)</th></tr></thead><tbody>';for(const x of d.rows)h+='<tr>'+[x.row,x.period,x.quota].map(v=>'<td style="padding:10px;border:1px solid var(--border)">'+String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</td>').join('')+'</tr>'; $('fuel-result').innerHTML=h+'</tbody></table>';fuelMsg('نتیجه استعلام دریافت شد.',true)}catch(e){fuelMsg(e.message)}});
+$('fuel-form').addEventListener('submit',async e=>{e.preventDefault();fuelMsg('در حال ارسال استعلام…');$('fuel-result').innerHTML='';const data={national_id:$('fuel-national').value.trim(),year:$('fuel-year').value.trim(),month:$('fuel-month').value,quota_type:$('fuel-type').value,plate_type:$('fuel-plate-type').value,plate_parts:{left:$('fuel-plate-left').value.trim(),letter:$('fuel-plate-letter').value,middle:$('fuel-plate-middle').value.trim(),code:$('fuel-plate-code').value.trim()},captcha:$('fuel-captcha').value.trim()};try{const r=await fetch('/fuel/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const d=await r.json();if(!r.ok)throw Error(d.error||'استعلام انجام نشد');if(!d.rows?.length){fuelMsg(d.message||'جدول نتیجه شناسایی نشد.');return}let h='<table style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#075e59;color:white"><th style="padding:10px">ردیف</th><th style="padding:10px">دوره</th><th style="padding:10px">سهمیه (لیتر)</th></tr></thead><tbody>';for(const x of d.rows)h+='<tr>'+[x.row,x.period,x.quota].map(v=>'<td style="padding:10px;border:1px solid var(--border)">'+String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</td>').join('')+'</tr>'; $('fuel-result').innerHTML=h+'</tbody></table>';fuelMsg('نتیجه استعلام دریافت شد.',true)}catch(e){fuelMsg(e.message)}});
 
 $('back-dashboard').addEventListener('click',()=>{appPages.forEach(p=>p.classList.add('hidden'));pageActions.classList.add('hidden');dashboard.classList.remove('hidden');$('site-subtitle').textContent='داشبورد ابزارها و سرگرمی‌های دالاهو'});
 const map=L.map('map').setView([35.6892,51.3890],7);
@@ -586,8 +596,9 @@ def fuel_captcha():
 def fuel_submit():
     if sync_playwright is None: return jsonify(error="Playwright در محیط اجرا نصب نیست."),503
     sid=request.cookies.get("dalahoo_fuel_sid",""); d=request.get_json(silent=True) or {}
-    if any(not str(d.get(k,"")).strip() for k in ("national_id","year","month","quota_type","plate_type","plate","captcha")):
-        return jsonify(error="همه فیلدها را تکمیل کنید."),400
+    plate_parts=d.get("plate_parts") or {}
+    if any(not str(d.get(k,"")).strip() for k in ("national_id","year","month","quota_type","plate_type","captcha")) or any(not str(plate_parts.get(k,"")).strip() for k in ("left","letter","middle","code")):
+        return jsonify(error="همه فیلدها از جمله چهار بخش شماره پلاک را تکمیل کنید."),400
     with _FUEL_LOCK:
         item=_FUEL_SESSIONS.get(sid)
         if not item: return jsonify(error="نشست کپچا منقضی شده؛ دوباره کپچا بگیرید."),409
@@ -604,7 +615,33 @@ def fuel_submit():
                 return False
             fill([r"شماره ملی",r"شناسه ملی"],d["national_id"])
             fill([r"کد امنیتی",r"کد.*تصویر",r"عبارت.*تصویر"],d["captcha"])
-            fill([r"شماره پلاک",r"پلاک"],d["plate"])
+            # UTCMS plate widget is segmented: left two digits, letter, middle three digits, Iran code.
+            parts=plate_parts
+            def western_digits(value):
+                return str(value).translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩","01234567890123456789"))
+            # Locate the plate label, then collect the nearby visible text inputs in visual left-to-right order.
+            plate_label=page.get_by_text(re.compile(r"شماره پلاک وسیله نقلیه"))
+            plate_inputs=[]
+            try:
+                label_box=plate_label.first.bounding_box() if plate_label.count() else None
+                if label_box:
+                    for inp in page.locator("input:visible").all():
+                        try:
+                            box=inp.bounding_box()
+                            if box and label_box["y"]-5 <= box["y"] <= label_box["y"]+115 and box["width"]>12 and box["height"]>10:
+                                plate_inputs.append((box["x"],inp))
+                        except Exception: pass
+            except Exception: pass
+            plate_inputs=sorted(plate_inputs,key=lambda item:item[0])
+            plate_values=[western_digits(parts["left"]),str(parts["letter"]),western_digits(parts["middle"]),western_digits(parts["code"])]
+            if len(plate_inputs)>=4:
+                for (_,inp),value in zip(plate_inputs[-4:],plate_values):
+                    try: inp.fill(value)
+                    except Exception: pass
+            else:
+                # Fallback for a single-field variant of the official form.
+                combined=f'{parts["left"]}-{parts["letter"]}-{parts["middle"]}-ایران{parts["code"]}'
+                fill([r"شماره پلاک",r"پلاک"],combined)
             # Select options by visible Persian text where available.
             for sel in page.locator("select:visible").all():
                 opts=sel.locator("option").all_text_contents()
