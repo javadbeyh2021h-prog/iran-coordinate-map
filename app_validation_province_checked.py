@@ -2,8 +2,24 @@ from flask import Flask, render_template_string, request, jsonify, send_file
 import requests
 import math
 from pathlib import Path
+import os, sqlite3, hmac, html, secrets
+from datetime import datetime, timezone
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+DB_PATH = os.environ.get("VISITORS_DB_PATH", str(Path(__file__).with_name("dalahoo_visitors.sqlite3")))
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+USER_COOKIE = "dalahoo_user_id"
+def db_connect():
+    c=sqlite3.connect(DB_PATH, timeout=10); c.row_factory=sqlite3.Row; return c
+def init_db():
+    with db_connect() as c:
+        c.execute("CREATE TABLE IF NOT EXISTS registered_users (user_id TEXT PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL, registered_at TEXT NOT NULL)")
+def user_id_from_cookie():
+    value=request.cookies.get(USER_COOKIE, "")
+    return value if len(value)==32 and all(ch in "0123456789abcdef" for ch in value) else ""
+init_db()
 HEADERS = {"User-Agent": "DebirnetRouteDemo/1.0 (Iran route planner)"}
 HTML = r"""
 <!doctype html>
@@ -149,9 +165,11 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
  </div>
 </section>
 </div>
+<div id="name-gate" style="display:none;position:fixed;inset:0;background:#0f172acc;z-index:99999;align-items:center;justify-content:center;padding:18px"><form id="name-form" style="width:100%;max-width:430px;background:white;border-radius:20px;padding:24px"><h2 style="color:#2563eb">به دالاهو خوش آمدید</h2><p style="font-size:13px;line-height:1.9;color:#475569">برای ورود، نام و نام خانوادگی خود را وارد کنید. نام شما برای نمایش در فهرست کاربران مدیر سایت ذخیره می‌شود؛ نشانی IP ذخیره نمی‌شود.</p><label for="visitor-first">نام</label><input id="visitor-first" maxlength="60" required style="margin:7px 0 13px"><label for="visitor-last">نام خانوادگی</label><input id="visitor-last" maxlength="80" required style="margin:7px 0 15px"><button type="submit" style="width:100%;background:#2563eb;color:white">ثبت و ورود به سایت</button><p id="name-error" style="color:#b91c1c;font-size:12px"></p></form></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const $=id=>document.getElementById(id);
+(async function visitorGate(){const gate=$('name-gate'),form=$('name-form'),error=$('name-error');try{const r=await fetch('/visitor_status');const d=await r.json();if(!d.registered)gate.style.display='flex';}catch(e){}form.addEventListener('submit',async e=>{e.preventDefault();error.textContent='';const first=$('visitor-first').value.trim(),last=$('visitor-last').value.trim();if(!first||!last){error.textContent='نام و نام خانوادگی را وارد کنید.';return;}try{const r=await fetch('/register_name',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({first_name:first,last_name:last})});const d=await r.json();if(!r.ok){error.textContent=d.error||'ثبت اطلاعات انجام نشد.';return;}gate.style.display='none';}catch(e){error.textContent='ارتباط برقرار نشد؛ دوباره تلاش کنید.';}})})();
 const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page'), gamesPage=$('games-page'), pasoorPage=$('pasoor-page'), fuelPage=$('fuel-page'), pageActions=$('page-actions');
 const appPages=[routePage,gamePage,gamesPage,pasoorPage,fuelPage];
 function openPage(id){dashboard.classList.add('hidden');appPages.forEach(p=>p.classList.toggle('hidden',p.id!==id));pageActions.classList.remove('hidden');const labels={'route-page':'نقشه مسیر ایران','games-page':'انتخاب بازی','game-page':'بازی مار کلاسیک','pasoor-page':'پاسور دالاهو','fuel-page':'استعلام سوخت'};$('site-subtitle').textContent=labels[id]||'دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}if(id==='pasoor-page'&&!pasoorStarted){pasoorNewGame()}}
@@ -330,6 +348,49 @@ snakeDraw();
 @app.get("/")
 def index():
     return render_template_string(HTML)
+
+@app.get("/visitor_status")
+def visitor_status():
+    uid=user_id_from_cookie()
+    if not uid: return jsonify(registered=False)
+    with db_connect() as c:
+        row=c.execute("SELECT user_id FROM registered_users WHERE user_id=?",(uid,)).fetchone()
+    return jsonify(registered=bool(row))
+
+@app.post("/register_name")
+def register_name():
+    data=request.get_json(silent=True) or {}
+    first=" ".join(str(data.get("first_name", "")).split())[:60]
+    last=" ".join(str(data.get("last_name", "")).split())[:80]
+    if not first or not last: return jsonify(error="نام و نام خانوادگی الزامی است."),400
+    uid=user_id_from_cookie()
+    if uid:
+        with db_connect() as c:
+            row=c.execute("SELECT user_id FROM registered_users WHERE user_id=?",(uid,)).fetchone()
+        if row: return jsonify(ok=True, already_registered=True)
+    uid=secrets.token_hex(16)
+    now=datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with db_connect() as c:
+        c.execute("INSERT INTO registered_users(user_id,first_name,last_name,registered_at) VALUES(?,?,?,?)",(uid,first,last,now))
+    response=jsonify(ok=True)
+    response.set_cookie(USER_COOKIE,uid,max_age=60*60*24*365*5,httponly=True,samesite="Lax",secure=request.is_secure)
+    return response
+
+@app.route("/admin/visitors", methods=["GET","POST"])
+def admin_visitors():
+    if not ADMIN_PASSWORD:
+        return "برای فعال‌سازی پنل مدیر، متغیر ADMIN_PASSWORD را در تنظیمات Render تعریف کنید.",503
+    supplied=request.form.get("password", "")
+    if not hmac.compare_digest(supplied,ADMIN_PASSWORD):
+        login_html = "<!doctype html><html lang='fa' dir='rtl'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>ورود مدیر</title><body style='font-family:Tahoma;background:#f1f5f9;padding:30px'><form method='post' style='max-width:420px;margin:8vh auto;background:white;padding:25px;border-radius:16px'><h2>پنل مدیر دالاهو</h2><p>رمز مدیر را وارد کنید.</p><input name='password' type='password' required autofocus style='width:100%;padding:12px;box-sizing:border-box;margin:10px 0'><button style='padding:12px 20px'>ورود</button></form></body></html>"
+        return login_html,401
+    with db_connect() as c:
+        rows=c.execute("SELECT first_name,last_name,registered_at FROM registered_users ORDER BY registered_at DESC").fetchall()
+    body="".join("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"%(i,html.escape(r['first_name']),html.escape(r['last_name']),html.escape(r['registered_at'])) for i,r in enumerate(rows,1))
+    page_start="<!doctype html><html lang='fa' dir='rtl'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>بازدیدکنندگان دالاهو</title><style>body{font-family:Tahoma;padding:20px;background:#f8fafc;color:#0f172a}table{border-collapse:collapse;width:100%;background:white;font-size:13px}th,td{border:1px solid #cbd5e1;padding:9px;text-align:right}th{background:#dbeafe}.wrap{overflow:auto}</style><h2>فهرست بازدیدکنندگان دالاهو</h2><p>تعداد کاربران ثبت‌نام‌شده: "
+    page_mid="</p><p>زمان ثبت به UTC است. نشانی IP ذخیره نمی‌شود.</p><div class='wrap'><table><thead><tr><th>ردیف</th><th>نام</th><th>نام خانوادگی</th><th>زمان ثبت‌نام</th></tr></thead><tbody>"
+    page_end="</tbody></table></div></html>"
+    return page_start+str(len(rows))+page_mid+(body or "<tr><td colspan='4'>هنوز کسی ثبت نشده است.</td></tr>")+page_end
 
 @app.get("/poster.png")
 def poster():
