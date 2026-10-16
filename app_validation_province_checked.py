@@ -20,6 +20,20 @@ def init_db():
 def user_id_from_cookie():
     value=request.cookies.get(USER_COOKIE, "")
     return value if len(value)==32 and all(ch in "0123456789abcdef" for ch in value) else ""
+
+def ensure_anonymous_user():
+    """Create a browser-linked anonymous player; no name or surname is requested."""
+    uid=user_id_from_cookie()
+    with db_connect() as c:
+        if uid and c.execute("SELECT 1 FROM registered_users WHERE user_id=?", (uid,)).fetchone():
+            return uid, None
+        uid=secrets.token_hex(16)
+        now=datetime.now(timezone.utc).isoformat(timespec="seconds")
+        # The legacy table requires first/last name; these are internal placeholders only.
+        c.execute("INSERT INTO registered_users(user_id,first_name,last_name,registered_at) VALUES(?,?,?,?)",
+                  (uid, "بازیکن", uid[-4:].upper(), now))
+    return uid, uid
+
 init_db()
 HEADERS = {"User-Agent": "DebirnetRouteDemo/1.0 (Iran route planner)"}
 HTML = r"""
@@ -169,42 +183,10 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 </section>
 </div>
 <div id="leaderboard-page" class="page hidden"><section class="game-wrap"><div class="game-card"><div class="game-head"><h2 class="game-title">🏆 برترین‌های دالاهو</h2><button class="game-btn" id="leaderboard-refresh" type="button">به‌روزرسانی</button></div><p class="game-help">رتبه‌بندی بر اساس مجموع امتیاز ثبت‌شده در بازی مار و حکم است. این جدول برای همه بازدیدکنندگان قابل مشاهده است.</p><div id="leaderboard-content" style="overflow:auto;margin-top:16px">در حال دریافت رتبه‌بندی…</div></div></section></div>
-<div id="name-gate" style="display:none;position:fixed;inset:0;background:#0f172acc;z-index:99999;align-items:center;justify-content:center;padding:18px"><form id="name-form" style="width:100%;max-width:430px;background:white;border-radius:20px;padding:24px"><h2 style="color:#2563eb">به دالاهو خوش آمدید</h2><p style="font-size:13px;line-height:1.9;color:#475569">برای ورود، نام و نام خانوادگی خود را وارد کنید. نام شما برای نمایش در فهرست کاربران مدیر سایت ذخیره می‌شود؛ نشانی IP ذخیره نمی‌شود.</p><label for="visitor-first">نام</label><input id="visitor-first" maxlength="60" required style="margin:7px 0 13px"><label for="visitor-last">نام خانوادگی</label><input id="visitor-last" maxlength="80" required style="margin:7px 0 15px"><button type="submit" style="width:100%;background:#2563eb;color:white">ثبت و ورود به سایت</button><p id="name-error" style="color:#b91c1c;font-size:12px"></p></form></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-(async function visitorGate(){
- const gate=$('name-gate'),form=$('name-form'),error=$('name-error');
- // اگر کاربر قبلاً در همین مرورگر ثبت‌نام کرده، فرم دوباره نمایش داده نشود.
- let remembered=false;
- try{remembered=localStorage.getItem('dalahoo_name_registered_v1')==='yes';}catch(e){}
- if(remembered){gate.style.display='none';}
- try{
-   const r=await fetch('/visitor_status',{credentials:'same-origin',cache:'no-store'});
-   const d=await r.json();
-   if(d.registered){
-     try{localStorage.setItem('dalahoo_name_registered_v1','yes');}catch(e){}
-     gate.style.display='none';
-   }else if(!remembered){
-     gate.style.display='flex';
-   }
- }catch(e){
-   // در صورت اختلال موقت شبکه، فرم را دوباره به کاربری که قبلاً ثبت کرده نشان نده.
-   if(!remembered) gate.style.display='flex';
- }
- form.addEventListener('submit',async e=>{
-   e.preventDefault();error.textContent='';
-   const first=$('visitor-first').value.trim(),last=$('visitor-last').value.trim();
-   if(!first||!last){error.textContent='نام و نام خانوادگی را وارد کنید.';return;}
-   try{
-     const r=await fetch('/register_name',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({first_name:first,last_name:last})});
-     const d=await r.json();
-     if(!r.ok){error.textContent=d.error||'ثبت اطلاعات انجام نشد.';return;}
-     try{localStorage.setItem('dalahoo_name_registered_v1','yes');}catch(e){}
-     gate.style.display='none';
-   }catch(e){error.textContent='ارتباط برقرار نشد؛ دوباره تلاش کنید.';}
- });
-})();
+// ورود بدون ثبت‌نام؛ برای امتیازدهی یک شناسه ناشناس خودکار ساخته می‌شود.
 const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page'), gamesPage=$('games-page'), pasoorPage=$('pasoor-page'), fuelPage=$('fuel-page'), pageActions=$('page-actions');
 const leaderboardPage=$('leaderboard-page');const appPages=[routePage,gamePage,gamesPage,pasoorPage,fuelPage,leaderboardPage];
 function openPage(id){dashboard.classList.add('hidden');appPages.forEach(p=>p.classList.toggle('hidden',p.id!==id));pageActions.classList.remove('hidden');const labels={'route-page':'نقشه مسیر ایران','games-page':'انتخاب بازی','game-page':'بازی مار کلاسیک','pasoor-page':'پاسور دالاهو','fuel-page':'استعلام سوخت','leaderboard-page':'برترین‌های دالاهو'};$('site-subtitle').textContent=labels[id]||'دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}if(id==='pasoor-page'&&!pasoorStarted){pasoorNewGame()}if(id==='leaderboard-page'){loadLeaderboard()}}
@@ -398,49 +380,23 @@ snakeDraw();
 def index():
     return render_template_string(HTML)
 
-@app.get("/visitor_status")
-def visitor_status():
-    uid=user_id_from_cookie()
-    if not uid: return jsonify(registered=False)
-    with db_connect() as c:
-        row=c.execute("SELECT user_id FROM registered_users WHERE user_id=?",(uid,)).fetchone()
-    return jsonify(registered=bool(row))
-
-@app.post("/register_name")
-def register_name():
-    data=request.get_json(silent=True) or {}
-    first=" ".join(str(data.get("first_name", "")).split())[:60]
-    last=" ".join(str(data.get("last_name", "")).split())[:80]
-    if not first or not last: return jsonify(error="نام و نام خانوادگی الزامی است."),400
-    uid=user_id_from_cookie()
-    if uid:
-        with db_connect() as c:
-            row=c.execute("SELECT user_id FROM registered_users WHERE user_id=?",(uid,)).fetchone()
-        if row: return jsonify(ok=True, already_registered=True)
-    uid=secrets.token_hex(16)
-    now=datetime.now(timezone.utc).isoformat(timespec="seconds")
-    with db_connect() as c:
-        c.execute("INSERT INTO registered_users(user_id,first_name,last_name,registered_at) VALUES(?,?,?,?)",(uid,first,last,now))
-    response=jsonify(ok=True)
-    response.set_cookie(USER_COOKIE,uid,max_age=60*60*24*365*5,httponly=True,samesite="Lax",secure=request.is_secure)
-    return response
-
 @app.post("/game_start")
 def game_start():
-    uid=user_id_from_cookie()
-    if not uid: return jsonify(error="ابتدا نام و نام خانوادگی را ثبت کنید و صفحه را دوباره باز کنید."),401
     data=request.get_json(silent=True) or {}; game=str(data.get("game", ""))
     if game not in ("snake", "hokm"): return jsonify(error="نوع بازی معتبر نیست."),400
+    uid,new_uid=ensure_anonymous_user()
+    run_id=secrets.token_hex(16); now=datetime.now(timezone.utc).isoformat(timespec="seconds")
     with db_connect() as c:
-        if not c.execute("SELECT 1 FROM registered_users WHERE user_id=?",(uid,)).fetchone(): return jsonify(error="کاربر ثبت‌نام‌شده پیدا نشد."),401
-        run_id=secrets.token_hex(16); now=datetime.now(timezone.utc).isoformat(timespec="seconds")
         c.execute("INSERT INTO game_runs(run_id,user_id,game,started_at) VALUES(?,?,?,?)",(run_id,uid,game,now))
-    return jsonify(ok=True,run_id=run_id)
+    response=jsonify(ok=True,run_id=run_id)
+    if new_uid:
+        response.set_cookie(USER_COOKIE,new_uid,max_age=60*60*24*365*5,httponly=True,samesite="Lax",secure=request.is_secure)
+    return response
 
 @app.post("/game_finish")
 def game_finish():
     uid=user_id_from_cookie()
-    if not uid: return jsonify(error="برای ثبت امتیاز باید وارد سایت شوید."),401
+    if not uid: return jsonify(error="شناسه بازی پیدا نشد؛ بازی را یک بار دیگر شروع کنید."),401
     data=request.get_json(silent=True) or {}; run_id=str(data.get("run_id", "")); game=str(data.get("game", "")); result=str(data.get("result", ""))
     try: score=int(data.get("score", 0))
     except (TypeError,ValueError): return jsonify(error="امتیاز معتبر نیست."),400
@@ -464,31 +420,15 @@ def game_finish():
 @app.get("/leaderboard")
 def leaderboard():
     with db_connect() as c:
-        rows=c.execute("""SELECT u.first_name,u.last_name,
+        rows=c.execute("""SELECT u.user_id,
           COALESCE(SUM(g.points),0) AS total,
           COALESCE(SUM(CASE WHEN g.game='snake' THEN g.points ELSE 0 END),0) AS snake,
           COALESCE(SUM(CASE WHEN g.game='hokm' THEN g.points ELSE 0 END),0) AS hokm
           FROM registered_users u LEFT JOIN game_runs g ON g.user_id=u.user_id
-          GROUP BY u.user_id,u.first_name,u.last_name
+          GROUP BY u.user_id
           HAVING COALESCE(SUM(g.points),0)>0
-          ORDER BY total DESC,u.first_name COLLATE NOCASE ASC,u.last_name COLLATE NOCASE ASC LIMIT 100""").fetchall()
-    return jsonify(rows=[{"rank":i,"name":r["first_name"]+" "+r["last_name"],"total":r["total"],"snake":r["snake"],"hokm":r["hokm"]} for i,r in enumerate(rows,1)])
-
-@app.route("/admin/visitors", methods=["GET","POST"])
-def admin_visitors():
-    if not ADMIN_PASSWORD:
-        return "برای فعال‌سازی پنل مدیر، متغیر ADMIN_PASSWORD را در تنظیمات Render تعریف کنید.",503
-    supplied=request.form.get("password", "")
-    if not hmac.compare_digest(supplied,ADMIN_PASSWORD):
-        login_html = "<!doctype html><html lang='fa' dir='rtl'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>ورود مدیر</title><body style='font-family:Tahoma;background:#f1f5f9;padding:30px'><form method='post' style='max-width:420px;margin:8vh auto;background:white;padding:25px;border-radius:16px'><h2>پنل مدیر دالاهو</h2><p>رمز مدیر را وارد کنید.</p><input name='password' type='password' required autofocus style='width:100%;padding:12px;box-sizing:border-box;margin:10px 0'><button style='padding:12px 20px'>ورود</button></form></body></html>"
-        return login_html,401
-    with db_connect() as c:
-        rows=c.execute("SELECT first_name,last_name,registered_at FROM registered_users ORDER BY registered_at DESC").fetchall()
-    body="".join("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"%(i,html.escape(r['first_name']),html.escape(r['last_name']),html.escape(r['registered_at'])) for i,r in enumerate(rows,1))
-    page_start="<!doctype html><html lang='fa' dir='rtl'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>بازدیدکنندگان دالاهو</title><style>body{font-family:Tahoma;padding:20px;background:#f8fafc;color:#0f172a}table{border-collapse:collapse;width:100%;background:white;font-size:13px}th,td{border:1px solid #cbd5e1;padding:9px;text-align:right}th{background:#dbeafe}.wrap{overflow:auto}</style><h2>فهرست بازدیدکنندگان دالاهو</h2><p>تعداد کاربران ثبت‌نام‌شده: "
-    page_mid="</p><p>زمان ثبت به UTC است. نشانی IP ذخیره نمی‌شود.</p><div class='wrap'><table><thead><tr><th>ردیف</th><th>نام</th><th>نام خانوادگی</th><th>زمان ثبت‌نام</th></tr></thead><tbody>"
-    page_end="</tbody></table></div></html>"
-    return page_start+str(len(rows))+page_mid+(body or "<tr><td colspan='4'>هنوز کسی ثبت نشده است.</td></tr>")+page_end
+          ORDER BY total DESC,u.user_id ASC LIMIT 100""").fetchall()
+    return jsonify(rows=[{"rank":i,"name":"بازیکن ناشناس #"+r["user_id"][-4:].upper(),"total":r["total"],"snake":r["snake"],"hokm":r["hokm"]} for i,r in enumerate(rows,1)])
 
 @app.get("/poster.png")
 def poster():
