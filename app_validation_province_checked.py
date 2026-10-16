@@ -575,6 +575,8 @@ _FUEL_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="fuel-play
 def _fuel_thread(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
+        # Keep all Playwright sync operations on one dedicated worker thread;
+        # this thread has no asyncio loop and also preserves browser thread affinity.
         view_with_context = copy_current_request_context(view)
         return _FUEL_EXECUTOR.submit(view_with_context, *args, **kwargs).result()
     return wrapper
