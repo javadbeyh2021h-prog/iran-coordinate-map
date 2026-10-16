@@ -85,6 +85,7 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
  <div class="dash-grid">
   <button class="dash-tile" type="button" data-open="route-page"><span class="tile-icon">🗺️</span><strong>نقشه مسیر ایران</strong><span>انتخاب مبدأ و مقصد، محاسبه مسیر و کپی مختصات</span></button>
   <button class="dash-tile" type="button" data-open="games-page"><span class="tile-icon">🎮</span><strong>بخش بازی‌ها</strong><span>ورود به بازی مار و پاسور</span></button>
+  <button class="dash-tile" type="button" data-open="fuel-page"><span class="tile-icon">⛽</span><strong>استعلام سوخت</strong><span>ورود به بخش استعلام سوخت؛ امکانات این قسمت بعداً تکمیل می‌شود.</span></button>
  </div>
 </section>
 <div id="page-actions" class="top-actions hidden"><button type="button" class="back-btn" id="back-dashboard">← بازگشت به داشبورد</button></div>
@@ -118,6 +119,17 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
   </div>
  </section>
 </div>
+<div id="fuel-page" class="page hidden">
+ <section class="game-wrap"><div class="game-card">
+  <div class="game-head"><h2 class="game-title">⛽ استعلام سوخت</h2></div>
+  <p class="game-help">این بخش برای استعلام سوخت در نظر گرفته شده است و در نسخه‌های بعدی تکمیل می‌شود.</p>
+  <div style="margin-top:18px;padding:18px;border:1px dashed var(--border);border-radius:14px;text-align:center;background:var(--card)">
+   <div style="font-size:44px;margin-bottom:10px">⛽</div>
+   <strong style="display:block;margin-bottom:8px">بخش استعلام سوخت آماده توسعه است</strong>
+   <span style="color:var(--muted);font-size:13px;line-height:1.9">فعلاً هیچ اطلاعاتی ثبت یا ارسال نمی‌شود. امکانات موردنیاز را بعداً به همین صفحه اضافه می‌کنیم.</span>
+  </div>
+ </div></section>
+</div>
 <div id="pasoor-page" class="page hidden">
  <section class="game-wrap"><div class="game-card">
   <div class="game-head"><h2 class="game-title">🂡 حکم چهار نفره دالاهو</h2><div class="game-tools"><span class="game-score">تیم شما: <span id="pasoor-player-score">۰</span></span><span class="game-score">حریف: <span id="pasoor-ai-score">۰</span></span><button class="game-btn" id="pasoor-new">بازی جدید</button></div></div>
@@ -140,9 +152,9 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page'), gamesPage=$('games-page'), pasoorPage=$('pasoor-page'), pageActions=$('page-actions');
-const appPages=[routePage,gamePage,gamesPage,pasoorPage];
-function openPage(id){dashboard.classList.add('hidden');appPages.forEach(p=>p.classList.toggle('hidden',p.id!==id));pageActions.classList.remove('hidden');const labels={'route-page':'نقشه مسیر ایران','games-page':'انتخاب بازی','game-page':'بازی مار کلاسیک','pasoor-page':'پاسور دالاهو'};$('site-subtitle').textContent=labels[id]||'دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}if(id==='pasoor-page'&&!pasoorStarted){pasoorNewGame()}}
+const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page'), gamesPage=$('games-page'), pasoorPage=$('pasoor-page'), fuelPage=$('fuel-page'), pageActions=$('page-actions');
+const appPages=[routePage,gamePage,gamesPage,pasoorPage,fuelPage];
+function openPage(id){dashboard.classList.add('hidden');appPages.forEach(p=>p.classList.toggle('hidden',p.id!==id));pageActions.classList.remove('hidden');const labels={'route-page':'نقشه مسیر ایران','games-page':'انتخاب بازی','game-page':'بازی مار کلاسیک','pasoor-page':'پاسور دالاهو','fuel-page':'استعلام سوخت'};$('site-subtitle').textContent=labels[id]||'دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}if(id==='pasoor-page'&&!pasoorStarted){pasoorNewGame()}}
 document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.open)));
 $('back-dashboard').addEventListener('click',()=>{appPages.forEach(p=>p.classList.add('hidden'));pageActions.classList.add('hidden');dashboard.classList.remove('hidden');$('site-subtitle').textContent='داشبورد ابزارها و سرگرمی‌های دالاهو'});
 const map=L.map('map').setView([35.6892,51.3890],7);
