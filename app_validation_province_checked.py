@@ -291,11 +291,25 @@ function snakeDraw(){
 }
 function snakeStart(){clearInterval(snakeTimer);snake=[{x:Math.floor(COLS/2),y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-1,y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-2,y:Math.floor(ROWS/2)}];snakeDir={x:1,y:0};snakeNext={x:1,y:0};snakeScore=0;snakeRunning=true;$('snake-score').textContent='۰';$('snake-message').textContent='عالیه! خوراکی‌ها را بخور و به دیوار یا بدن خودت برخورد نکن.';snakeFoodNew();snakeDraw();snakeTimer=setInterval(snakeStep,115)}
 function snakeStep(){if(!snakeRunning)return;snakeDir=snakeNext;const head={x:snake[0].x+snakeDir.x,y:snake[0].y+snakeDir.y};if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some((p,i)=>i<snake.length-1&&p.x===head.x&&p.y===head.y)){snakeRunning=false;clearInterval(snakeTimer);$('snake-message').textContent='بازی تمام شد! امتیاز شما: '+snakeScore+' — برای شروع دوباره دکمه را بزن.';snakeDraw();return}snake.unshift(head);if(head.x===snakeFood.x&&head.y===snakeFood.y){snakeScore++;$('snake-score').textContent=snakeScore.toLocaleString('fa-IR');snakeFoodNew()}else snake.pop();snakeDraw()}
-function snakeTurn(d){if(!snakeRunning)return;const dirs={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};const n=dirs[d];if(n&&!(n.x===-snakeDir.x&&n.y===-snakeDir.y))snakeNext=n}
+function snakeTurn(d){
+ if(!snakeRunning)return;
+ const dirs={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};
+ const n=dirs[d]; if(!n)return;
+ // Direction changes are relative to the current committed direction, preventing accidental 180-degree turns.
+ if(n.x===-snakeDir.x&&n.y===-snakeDir.y)return;
+ snakeNext={x:n.x,y:n.y};
+}
 $('snake-start').addEventListener('click',snakeStart);document.querySelectorAll('.game-pad button').forEach(b=>b.addEventListener('click',()=>snakeTurn(b.dataset.dir)));
 document.addEventListener('keydown',e=>{
- if(e.key==='Enter'&&!gamePage.classList.contains('hidden')&&!snakeRunning){e.preventDefault();snakeStart();return}
-const k=e.key.toLowerCase();const mapKeys={'arrowup':'up','w':'up','arrowdown':'down','s':'down','arrowleft':'left','a':'left','arrowright':'right','d':'right'};if(mapKeys[k]&&document.activeElement!==$('city-search')){e.preventDefault();snakeTurn(mapKeys[k])}});
+ if(gamePage.classList.contains('hidden'))return;
+ if(e.key==='Enter'&&!snakeRunning){e.preventDefault();snakeStart();return}
+ const k=e.key.toLowerCase();
+ const mapKeys={'arrowup':'up','w':'up','arrowdown':'down','s':'down','arrowleft':'left','a':'left','arrowright':'right','d':'right'};
+ if(mapKeys[k]&&!['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)){e.preventDefault();snakeTurn(mapKeys[k])}
+});
+document.querySelectorAll('.game-pad button[data-dir]').forEach(b=>{
+ b.addEventListener('pointerdown',e=>{e.preventDefault();snakeTurn(b.dataset.dir)});
+});
 snakeDraw();
 
 </script>
