@@ -53,6 +53,29 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
 .hokm-table{margin-top:18px;padding:18px;border-radius:22px;background:radial-gradient(ellipse at center,#18734f 0%,#10553d 55%,#073b2b 100%);color:#fff;box-shadow:inset 0 0 0 5px #c6a15b, inset 0 0 0 8px #6b4b21;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:14px}
 .hokm-seat{display:flex;flex-direction:column;align-items:center;gap:5px;font-weight:800;font-size:13px;text-align:center}.hokm-seat span{font-size:11px;color:#d1fae5;font-weight:500}.hokm-middle{width:100%;display:grid;grid-template-columns:minmax(64px,1fr) minmax(130px,2fr) minmax(64px,1fr);gap:8px;align-items:center}.hokm-trick{min-height:135px;border:1px dashed #a7f3d055;border-radius:15px;display:flex;flex-wrap:wrap;align-content:center;align-items:center;justify-content:center;gap:6px;padding:8px}.hokm-trick .playing-card{width:48px;height:69px;font-size:14px}.hokm-trick .playing-card b{font-size:20px}.user-seat{background:#ffffff18;border-radius:12px;padding:8px 22px}.hokm-select{margin-top:15px;padding:14px;border-radius:14px;background:#fff7ed;border:1px solid #fdba74;display:flex;flex-direction:column;gap:10px;color:#7c2d12}.hokm-select.hidden{display:none}.hokm-suits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.hokm-suits button{padding:12px 5px;border-radius:12px;background:#fff;border:1px solid #fed7aa;color:#7c2d12;font-size:15px;font-weight:900}.hokm-suits button:nth-child(2),.hokm-suits button:nth-child(3){color:#dc2626}.pasoor-area{background:#eefbf4}.playing-card{flex-shrink:0;width:58px;height:86px;font-weight:900}.playing-card:disabled{opacity:.45;cursor:not-allowed}.game-pad button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:54px;border-radius:12px;box-shadow:0 3px 0 #94a3b8;font-weight:900}.game-pad button small{font-size:10px;font-weight:700}.game-pad button:active{transform:translateY(2px);box-shadow:0 1px 0 #94a3b8}.game-pad{grid-template-columns:repeat(3,minmax(56px,72px));gap:8px}.game-pad button:nth-child(1){grid-column:2;grid-row:1}.game-pad button:nth-child(2){grid-column:1;grid-row:2}.game-pad button:nth-child(3){grid-column:2;grid-row:2}.game-pad button:nth-child(4){grid-column:3;grid-row:2}
 @media(max-width:600px){.hokm-table{padding:12px;min-height:260px}.hokm-middle{grid-template-columns:56px minmax(105px,1fr) 56px;gap:4px}.hokm-seat{font-size:11px}.hokm-trick{min-height:115px;padding:4px}.hokm-trick .playing-card{width:40px;height:60px}.playing-card{width:48px;height:74px}.pasoor-cards{gap:5px}.hokm-suits{gap:5px}.hokm-suits button{font-size:13px;padding:10px 2px}}
+
+/* Clearly illustrated playing cards: corner rank, suit pips, face-card art */
+.playing-card{position:relative;overflow:hidden;width:66px;height:98px;flex:0 0 auto;padding:4px;border:1px solid #d6d3d1;border-radius:8px;background:linear-gradient(135deg,#fff 0%,#fffdf7 55%,#f1eee5 100%);color:#111827;display:block;box-shadow:0 4px 9px #02061740;font-family:Georgia,'Times New Roman',serif;transition:transform .12s ease,box-shadow .12s ease}
+.playing-card.red-card{color:#c91f37}.playing-card.black-card{color:#111827}.playing-card:disabled{opacity:1}
+.card-corner{position:absolute;z-index:2;display:flex;flex-direction:column;align-items:center;line-height:.95;font-size:12px;font-weight:900;gap:2px}.card-corner strong{font-size:15px}.card-corner b{font-size:12px}.top-corner{left:5px;top:5px}.bottom-corner{right:5px;bottom:5px;transform:rotate(180deg)}
+.pip-grid{position:absolute;inset:22px 13px;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(5,1fr);align-items:center;justify-items:center;font-size:14px;line-height:1}
+.pip{font-style:normal;display:block}.pip:nth-child(even){transform:rotate(180deg)}
+.pip-n1{grid-template-columns:1fr;grid-template-rows:1fr;align-items:center;justify-items:center;font-size:24px}
+.pip-n2{grid-template-rows:1fr 1fr}.pip-n3{grid-template-rows:1fr 1fr 1fr}
+.pip-n4,.pip-n5{grid-template-rows:repeat(3,1fr)}.pip-n6{grid-template-rows:repeat(3,1fr)}
+.pip-n7,.pip-n8,.pip-n9,.pip-n10{grid-template-rows:repeat(5,1fr)}
+.pip-grid .pip:nth-child(5){grid-column:1 / 3}
+.ace-art{position:absolute;inset:22px 8px;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900}
+.face-art{position:absolute;inset:24px 9px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px double currentColor;border-radius:5px;background:repeating-linear-gradient(45deg,#f7e7bd 0,#f7e7bd 4px,#fffaf0 4px,#fffaf0 8px);text-shadow:0 1px #fff;font-size:24px}
+.face-crown{font-size:30px;line-height:1.1}.face-letter{font-family:Georgia,serif;font-size:16px;font-weight:900;background:#fff9;padding:1px 5px;border-radius:4px}
+.ace-card{background:linear-gradient(135deg,#fffdf7,#e7dcc0)}.hokm-trick .playing-card{width:54px;height:80px}.hokm-trick .pip-grid{inset:19px 10px;font-size:11px}.hokm-trick .ace-art{font-size:31px}.hokm-trick .face-art{inset:21px 7px}.hokm-trick .face-crown{font-size:23px}
+@media(max-width:600px){.playing-card{width:49px;height:76px;padding:3px;border-radius:6px}.card-corner{font-size:9px}.card-corner strong{font-size:12px}.card-corner b{font-size:9px}.top-corner{left:3px;top:4px}.bottom-corner{right:3px;bottom:4px}.pip-grid{inset:18px 9px;font-size:10px}.pip-n1{font-size:19px}.ace-art{inset:19px 5px;font-size:31px}.face-art{inset:20px 6px;font-size:19px}.face-crown{font-size:23px}.face-letter{font-size:12px}.hokm-trick .playing-card{width:42px;height:64px}.hokm-trick .pip-grid{inset:17px 8px;font-size:9px}.hokm-trick .ace-art{font-size:25px}}
+
+.face-card .face-art{display:flex;align-items:center;justify-content:center;width:100%;height:68%;padding:2px}
+.face-card .face-portrait{width:100%;height:100%;max-height:100%;display:block;filter:drop-shadow(0 1px 1px #0002)}
+.face-card .card-corner{z-index:2;background:#ffffffdc;border-radius:3px;padding:1px 2px}
+.face-card .face-art{position:relative}
+@media(max-width:600px){.face-card .face-art{height:65%;padding:1px}.face-card .face-portrait{width:100%;height:100%}}
 </style>
 </head>
 <body>
@@ -203,7 +226,34 @@ updateCopyButtons();
 let pasoorStarted=false, hDeck=[], hHands=[[],[],[],[]], hTrick=[], hTrump=null, hLeader=0, hTurn=0, hTeamTricks=[0,0], hPhase='trump', hGameOver=false;
 const hSuits=['♠','♥','♦','♣'], hRanks=[{v:2,t:'۲'},{v:3,t:'۳'},{v:4,t:'۴'},{v:5,t:'۵'},{v:6,t:'۶'},{v:7,t:'۷'},{v:8,t:'۸'},{v:9,t:'۹'},{v:10,t:'۱۰'},{v:11,t:'سرباز'},{v:12,t:'بی‌بی'},{v:13,t:'شاه'},{v:14,t:'آس'}];
 function hShuffle(){hDeck=[];for(const su of hSuits)for(const r of hRanks)hDeck.push({s:su,v:r.v,t:r.t,id:su+r.v});for(let i=hDeck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[hDeck[i],hDeck[j]]=[hDeck[j],hDeck[i]]}}
-function hCard(c,disabled=false){return `<button type="button" class="playing-card ${c.s==='♥'||c.s==='♦'?'red-card':''}" data-card="${c.id}" ${disabled?'disabled':''}><span>${c.t}</span><b>${c.s}</b></button>`}
+function hFacePortrait(kind, red){
+ const ink=red?'#9f1239':'#172554';
+ const robe=kind==='Q'?'#7c3aed':kind==='K'?'#b45309':'#0f766e';
+ const crown=kind==='Q'
+  ? `<path d="M24 24 L17 7 L29 17 L40 3 L51 17 L63 7 L56 25 Z" fill="#facc15" stroke="#92400e" stroke-width="2"/><circle cx="17" cy="7" r="3" fill="#ef4444"/><circle cx="40" cy="3" r="3" fill="#3b82f6"/><circle cx="63" cy="7" r="3" fill="#ef4444"/>`
+  : kind==='K'
+  ? `<path d="M22 23 L18 6 L33 16 L42 2 L51 16 L66 6 L61 24 Z" fill="#facc15" stroke="#92400e" stroke-width="2"/><path d="M37 3 L47 11 L42 18 L34 11 Z" fill="#dc2626"/>`
+  : `<path d="M25 23 L20 7 L35 16 L43 4 L51 16 L65 7 L60 24 Z" fill="#facc15" stroke="#92400e" stroke-width="2"/><circle cx="43" cy="10" r="4" fill="#2563eb"/>`;
+ const hair=kind==='Q'?'#3f2a1d':'#38251b';
+ const face=`<ellipse cx="43" cy="42" rx="17" ry="20" fill="#f5c9a5" stroke="#7c4a2d" stroke-width="1.4"/><path d="M26 40 Q20 19 43 19 Q66 19 60 41 L56 31 Q43 24 30 32 Z" fill="${hair}"/><circle cx="36" cy="42" r="1.8" fill="#1f2937"/><circle cx="50" cy="42" r="1.8" fill="#1f2937"/><path d="M38 51 Q43 55 49 50" fill="none" stroke="#9a3412" stroke-width="1.5" stroke-linecap="round"/>`;
+ const outfit=kind==='Q'
+  ? `<path d="M24 84 Q24 61 34 59 L43 65 L52 59 Q64 62 64 84 Z" fill="${robe}" stroke="#312e81" stroke-width="1.5"/><path d="M34 61 L43 74 L52 61" fill="#fef3c7" stroke="#d4a72c" stroke-width="2"/><circle cx="43" cy="77" r="3" fill="#facc15"/>`
+  : kind==='K'
+  ? `<path d="M22 84 Q23 61 34 59 L43 66 L52 59 Q63 62 65 84 Z" fill="${robe}" stroke="#78350f" stroke-width="1.5"/><path d="M34 60 L43 73 L52 60" fill="#fef3c7" stroke="#d4a72c" stroke-width="2"/><path d="M43 69 L47 78 L43 82 L39 78 Z" fill="#dc2626"/>`
+  : `<path d="M23 84 Q24 61 34 59 L43 65 L52 59 Q63 62 64 84 Z" fill="${robe}" stroke="#134e4a" stroke-width="1.5"/><path d="M34 61 L43 74 L52 61" fill="#fef3c7" stroke="#d4a72c" stroke-width="2"/><path d="M38 76 L43 71 L48 76 L43 81 Z" fill="#facc15"/>`;
+ return `<svg class="face-portrait" viewBox="0 0 86 92" role="img" aria-label="${kind==='Q'?'بی‌بی':kind==='K'?'شاه':'سرباز'}"><rect x="2" y="2" width="82" height="88" rx="7" fill="#fff7e6" stroke="#d6b46a" stroke-width="2"/><rect x="6" y="6" width="74" height="80" rx="5" fill="none" stroke="${ink}" stroke-width="1" opacity=".45"/>${outfit}${face}${crown}<path d="M12 76 Q18 69 23 76 M63 76 Q68 69 74 76" fill="none" stroke="#d6b46a" stroke-width="1.5"/></svg>`;
+}
+function hCard(c,disabled=false){
+ const red=c.s==='♥'||c.s==='♦';
+ const label=({11:'J',12:'Q',13:'K',14:'A'})[c.v]||String(c.v);
+ const face=c.v>=11&&c.v<=13;
+ const pipCount=Math.min(c.v,10);
+ const pips=face?`<span class="face-art">${hFacePortrait(label,red)}</span>`:
+   c.v===14?`<span class="ace-art">${c.s}</span>`:
+   `<span class="pip-grid pip-n${pipCount}">${Array.from({length:pipCount},()=>`<i class="pip">${c.s}</i>`).join('')}</span>`;
+ return `<button type="button" class="playing-card ${red?'red-card':'black-card'} ${face?'face-card':''} ${c.v===14?'ace-card':''}" data-card="${c.id}" aria-label="${label} ${c.s}" ${disabled?'disabled':''}>
+ <span class="card-corner top-corner"><strong>${label}</strong><b>${c.s}</b></span>${pips}<span class="card-corner bottom-corner"><strong>${label}</strong><b>${c.s}</b></span></button>`
+}
 function hRender(){
  $('pasoor-table').innerHTML=hTrick.length?hTrick.map(x=>`<div class="hokm-play"><small>${['شما','حریف چپ','هم‌تیمی','حریف راست'][x.p]}</small>${hCard(x.c,true)}</div>`).join(''):'<span class="game-help" style="color:#d1fae5">کارت‌های دور بعدی اینجا قرار می‌گیرند</span>';
  $('pasoor-hand').innerHTML=hHands[0].slice().sort((a,b)=>hSuits.indexOf(a.s)-hSuits.indexOf(b.s)||b.v-a.v).map(c=>hCard(c,hPhase!=='play'||hTurn!==0||hGameOver)).join('');
