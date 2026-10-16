@@ -16,6 +16,7 @@ def db_connect():
 def init_db():
     with db_connect() as c:
         c.execute("CREATE TABLE IF NOT EXISTS registered_users (user_id TEXT PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL, registered_at TEXT NOT NULL)")
+        c.execute("CREATE TABLE IF NOT EXISTS game_runs (run_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, game TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT, points INTEGER NOT NULL DEFAULT 0, result TEXT, FOREIGN KEY(user_id) REFERENCES registered_users(user_id))")
 def user_id_from_cookie():
     value=request.cookies.get(USER_COOKIE, "")
     return value if len(value)==32 and all(ch in "0123456789abcdef" for ch in value) else ""
@@ -103,6 +104,7 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
   <button class="dash-tile" type="button" data-open="route-page"><span class="tile-icon">🗺️</span><strong>نقشه مسیر ایران</strong><span>انتخاب مبدأ و مقصد، محاسبه مسیر و کپی مختصات</span></button>
   <button class="dash-tile" type="button" data-open="games-page"><span class="tile-icon">🎮</span><strong>بخش بازی‌ها</strong><span>ورود به بازی مار و پاسور</span></button>
   <button class="dash-tile" type="button" data-open="fuel-page"><span class="tile-icon">⛽</span><strong>استعلام سوخت</strong><span>ورود به بخش استعلام سوخت؛ امکانات این قسمت بعداً تکمیل می‌شود.</span></button>
+  <button class="dash-tile" type="button" data-open="leaderboard-page"><span class="tile-icon">🏆</span><strong>برترین‌های دالاهو</strong><span>رتبه‌بندی کاربران بر اساس مجموع امتیاز همیشگی دو بازی مار و حکم</span></button>
  </div>
 </section>
 <div id="page-actions" class="top-actions hidden"><button type="button" class="back-btn" id="back-dashboard">← بازگشت به داشبورد</button></div>
@@ -166,14 +168,46 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
  </div>
 </section>
 </div>
+<div id="leaderboard-page" class="page hidden"><section class="game-wrap"><div class="game-card"><div class="game-head"><h2 class="game-title">🏆 برترین‌های دالاهو</h2><button class="game-btn" id="leaderboard-refresh" type="button">به‌روزرسانی</button></div><p class="game-help">رتبه‌بندی بر اساس مجموع امتیاز ثبت‌شده در بازی مار و حکم است. این جدول برای همه بازدیدکنندگان قابل مشاهده است.</p><div id="leaderboard-content" style="overflow:auto;margin-top:16px">در حال دریافت رتبه‌بندی…</div></div></section></div>
 <div id="name-gate" style="display:none;position:fixed;inset:0;background:#0f172acc;z-index:99999;align-items:center;justify-content:center;padding:18px"><form id="name-form" style="width:100%;max-width:430px;background:white;border-radius:20px;padding:24px"><h2 style="color:#2563eb">به دالاهو خوش آمدید</h2><p style="font-size:13px;line-height:1.9;color:#475569">برای ورود، نام و نام خانوادگی خود را وارد کنید. نام شما برای نمایش در فهرست کاربران مدیر سایت ذخیره می‌شود؛ نشانی IP ذخیره نمی‌شود.</p><label for="visitor-first">نام</label><input id="visitor-first" maxlength="60" required style="margin:7px 0 13px"><label for="visitor-last">نام خانوادگی</label><input id="visitor-last" maxlength="80" required style="margin:7px 0 15px"><button type="submit" style="width:100%;background:#2563eb;color:white">ثبت و ورود به سایت</button><p id="name-error" style="color:#b91c1c;font-size:12px"></p></form></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-(async function visitorGate(){const gate=$('name-gate'),form=$('name-form'),error=$('name-error');try{const r=await fetch('/visitor_status');const d=await r.json();if(!d.registered)gate.style.display='flex';}catch(e){}form.addEventListener('submit',async e=>{e.preventDefault();error.textContent='';const first=$('visitor-first').value.trim(),last=$('visitor-last').value.trim();if(!first||!last){error.textContent='نام و نام خانوادگی را وارد کنید.';return;}try{const r=await fetch('/register_name',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({first_name:first,last_name:last})});const d=await r.json();if(!r.ok){error.textContent=d.error||'ثبت اطلاعات انجام نشد.';return;}gate.style.display='none';}catch(e){error.textContent='ارتباط برقرار نشد؛ دوباره تلاش کنید.';}})})();
+(async function visitorGate(){
+ const gate=$('name-gate'),form=$('name-form'),error=$('name-error');
+ // اگر کاربر قبلاً در همین مرورگر ثبت‌نام کرده، فرم دوباره نمایش داده نشود.
+ let remembered=false;
+ try{remembered=localStorage.getItem('dalahoo_name_registered_v1')==='yes';}catch(e){}
+ if(remembered){gate.style.display='none';}
+ try{
+   const r=await fetch('/visitor_status',{credentials:'same-origin',cache:'no-store'});
+   const d=await r.json();
+   if(d.registered){
+     try{localStorage.setItem('dalahoo_name_registered_v1','yes');}catch(e){}
+     gate.style.display='none';
+   }else if(!remembered){
+     gate.style.display='flex';
+   }
+ }catch(e){
+   // در صورت اختلال موقت شبکه، فرم را دوباره به کاربری که قبلاً ثبت کرده نشان نده.
+   if(!remembered) gate.style.display='flex';
+ }
+ form.addEventListener('submit',async e=>{
+   e.preventDefault();error.textContent='';
+   const first=$('visitor-first').value.trim(),last=$('visitor-last').value.trim();
+   if(!first||!last){error.textContent='نام و نام خانوادگی را وارد کنید.';return;}
+   try{
+     const r=await fetch('/register_name',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({first_name:first,last_name:last})});
+     const d=await r.json();
+     if(!r.ok){error.textContent=d.error||'ثبت اطلاعات انجام نشد.';return;}
+     try{localStorage.setItem('dalahoo_name_registered_v1','yes');}catch(e){}
+     gate.style.display='none';
+   }catch(e){error.textContent='ارتباط برقرار نشد؛ دوباره تلاش کنید.';}
+ });
+})();
 const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page'), gamesPage=$('games-page'), pasoorPage=$('pasoor-page'), fuelPage=$('fuel-page'), pageActions=$('page-actions');
-const appPages=[routePage,gamePage,gamesPage,pasoorPage,fuelPage];
-function openPage(id){dashboard.classList.add('hidden');appPages.forEach(p=>p.classList.toggle('hidden',p.id!==id));pageActions.classList.remove('hidden');const labels={'route-page':'نقشه مسیر ایران','games-page':'انتخاب بازی','game-page':'بازی مار کلاسیک','pasoor-page':'پاسور دالاهو','fuel-page':'استعلام سوخت'};$('site-subtitle').textContent=labels[id]||'دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}if(id==='pasoor-page'&&!pasoorStarted){pasoorNewGame()}}
+const leaderboardPage=$('leaderboard-page');const appPages=[routePage,gamePage,gamesPage,pasoorPage,fuelPage,leaderboardPage];
+function openPage(id){dashboard.classList.add('hidden');appPages.forEach(p=>p.classList.toggle('hidden',p.id!==id));pageActions.classList.remove('hidden');const labels={'route-page':'نقشه مسیر ایران','games-page':'انتخاب بازی','game-page':'بازی مار کلاسیک','pasoor-page':'پاسور دالاهو','fuel-page':'استعلام سوخت','leaderboard-page':'برترین‌های دالاهو'};$('site-subtitle').textContent=labels[id]||'دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}if(id==='pasoor-page'&&!pasoorStarted){pasoorNewGame()}if(id==='leaderboard-page'){loadLeaderboard()}}
 document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.open)));
 $('back-dashboard').addEventListener('click',()=>{appPages.forEach(p=>p.classList.add('hidden'));pageActions.classList.add('hidden');dashboard.classList.remove('hidden');$('site-subtitle').textContent='داشبورد ابزارها و سرگرمی‌های دالاهو'});
 const map=L.map('map').setView([35.6892,51.3890],7);
@@ -253,6 +287,20 @@ $('copy-all').onclick=()=>{if(origin&&dest)copyText([origin.lat.toFixed(6),origi
 $('reset').onclick=()=>{origin=dest=null;nextPoint='origin';cityCenter=null;[originMarker,destMarker,routeLayer].forEach(x=>{if(x)map.removeLayer(x)});originMarker=destMarker=routeLayer=null;$('city-search').value='';$('origin-info').style.display='none';$('dest-info').style.display='none';$('result').style.display='none';$('copy-message').textContent='';updateCopyButtons();map.invalidateSize()};
 updateCopyButtons();
 
+// امتیازهای بازی از سرور ثبت می‌شوند؛ هر نوبت بازی فقط یک بار قابل ثبت است.
+let snakeRunId=null, hokmRunId=null;
+async function startScoredGame(game){
+ try{const r=await fetch('/game_start',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({game})});const d=await r.json();if(!r.ok)throw new Error(d.error||'ثبت شروع بازی ناموفق بود');return d.run_id;}
+ catch(e){alert(e.message||'برای ثبت امتیاز ارتباط با سرور برقرار نشد.');return null;}
+}
+async function submitGameResult(runId,game,score,result){
+ if(!runId)return;try{const r=await fetch('/game_finish',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({run_id:runId,game,score,result})});const d=await r.json();if(!r.ok)throw new Error(d.error||'ثبت امتیاز ناموفق بود');if(d.ok){if(game==='snake')$('snake-message').textContent+=' امتیاز ثبت‌شده در دالاهو: '+d.points.toLocaleString('fa-IR')+'؛ مجموع امتیاز شما: '+d.total_points.toLocaleString('fa-IR')+'.';else $('pasoor-message').textContent+=' امتیاز این دست: '+d.points.toLocaleString('fa-IR')+'؛ مجموع امتیاز شما: '+d.total_points.toLocaleString('fa-IR')+'.';}}
+ catch(e){alert(e.message||'امتیاز ثبت نشد؛ اتصال اینترنت را بررسی کنید.');}
+}
+async function loadLeaderboard(){const box=$('leaderboard-content');box.textContent='در حال دریافت رتبه‌بندی…';try{const r=await fetch('/leaderboard',{credentials:'same-origin',cache:'no-store'});const d=await r.json();if(!r.ok)throw new Error(d.error||'خطا در دریافت رتبه‌بندی');if(!d.rows.length){box.innerHTML='<p>هنوز امتیازی ثبت نشده است. اولین نفر باشید!</p>';return}box.innerHTML='<table style="width:100%;border-collapse:collapse;text-align:right"><thead><tr><th style="padding:10px;border-bottom:1px solid var(--border)">رتبه</th><th style="padding:10px;border-bottom:1px solid var(--border)">نام کاربر</th><th style="padding:10px;border-bottom:1px solid var(--border)">مجموع امتیاز</th><th style="padding:10px;border-bottom:1px solid var(--border)">بازی مار</th><th style="padding:10px;border-bottom:1px solid var(--border)">بازی حکم</th></tr></thead><tbody>'+d.rows.map(x=>'<tr><td style="padding:10px;border-bottom:1px solid var(--border)">'+x.rank.toLocaleString('fa-IR')+'</td><td style="padding:10px;border-bottom:1px solid var(--border)">'+escapeText(x.name)+'</td><td style="padding:10px;border-bottom:1px solid var(--border);font-weight:900">'+x.total.toLocaleString('fa-IR')+'</td><td style="padding:10px;border-bottom:1px solid var(--border)">'+x.snake.toLocaleString('fa-IR')+'</td><td style="padding:10px;border-bottom:1px solid var(--border)">'+x.hokm.toLocaleString('fa-IR')+'</td></tr>').join('')+'</tbody></table>';}catch(e){box.textContent='دریافت رتبه‌بندی ناموفق بود: '+e.message}}
+function escapeText(v){const el=document.createElement('span');el.textContent=String(v??'');return el.innerHTML}
+$('leaderboard-refresh').addEventListener('click',loadLeaderboard);
+
 // حکم چهار نفره: شما و بازیکن روبه‌رو در یک تیم هستید
 let pasoorStarted=false, hDeck=[], hHands=[[],[],[],[]], hTrick=[], hTrump=null, hLeader=0, hTurn=0, hTeamTricks=[0,0], hPhase='trump', hGameOver=false;
 const hSuits=['♠','♥','♦','♣'], hRanks=[{v:2,t:'۲'},{v:3,t:'۳'},{v:4,t:'۴'},{v:5,t:'۵'},{v:6,t:'۶'},{v:7,t:'۷'},{v:8,t:'۸'},{v:9,t:'۹'},{v:10,t:'۱۰'},{v:11,t:'سرباز'},{v:12,t:'بی‌بی'},{v:13,t:'شاه'},{v:14,t:'آس'}];
@@ -293,8 +341,8 @@ function hRender(){
  ['hokm-user-count','hokm-left-count','hokm-top-count','hokm-right-count'].forEach((id,i)=>$(id).textContent=hHands[[0,1,2,3][i]].length+' کارت');
  $('hokm-select').classList.toggle('hidden',hPhase!=='trump');
 }
-function pasoorNewGame(){
- pasoorStarted=true;hShuffle();hHands=[[],[],[],[]];for(let round=0;round<5;round++)for(let p=0;p<4;p++)hHands[p].push(hDeck.shift());
+async function pasoorNewGame(){
+ pasoorStarted=true;hokmRunId=null;hokmRunId=await startScoredGame('hokm');hShuffle();hHands=[[],[],[],[]];for(let round=0;round<5;round++)for(let p=0;p<4;p++)hHands[p].push(hDeck.shift());
  hTrick=[];hTrump=null;hLeader=0;hTurn=0;hTeamTricks=[0,0];hPhase='trump';hGameOver=false;
  $('pasoor-message').textContent='۵ کارت اول دستت را ببین و خال حکم را انتخاب کن. شما و هم‌تیمی‌تان روبه‌روی هم هستید.';
  hRender();
@@ -305,7 +353,7 @@ function hLegal(c,p=0){const lead=hTrick.length?hTrick[0].c.s:null;return !lead|
 function hUserPlay(id){if(hPhase!=='play'||hTurn!==0||hGameOver)return;const ix=hHands[0].findIndex(c=>c.id===id);if(ix<0)return;const c=hHands[0][ix];if(!hLegal(c,0)){$('pasoor-message').textContent='از خال شروع‌شده کارت داری؛ باید همان خال را بازی کنی.';return}hPlayCard(0,ix);hAiSequence()}
 function hPlayCard(p,ix){const c=hHands[p].splice(ix,1)[0];hTrick.push({p,c});hTurn=(p+1)%4;hRender();if(hTrick.length===4)setTimeout(hResolveTrick,650)}
 function hAiSequence(){if(hPhase!=='play'||hGameOver||hTrick.length===4)return;if(hTurn===0){hRender();return}setTimeout(()=>{if(hPhase!=='play'||hGameOver||hTrick.length===4)return;const p=hTurn,lead=hTrick.length?hTrick[0].c.s:null;let options=hHands[p].map((c,i)=>({c,i}));if(lead&&options.some(x=>x.c.s===lead))options=options.filter(x=>x.c.s===lead);let chosen;if(!hTrick.length)chosen=options.sort((a,b)=>b.c.v-a.c.v)[0];else chosen=options[Math.floor(Math.random()*options.length)];hPlayCard(p,chosen.i);if(hTrick.length<4)hAiSequence()},480)}
-function hResolveTrick(){if(hTrick.length!==4)return;const lead=hTrick[0].c.s;function power(x){return (x.c.s===hTrump?100:0)+(x.c.s===lead?10:0)+x.c.v}const winner=hTrick.reduce((best,x)=>power(x)>power(best)?x:best).p;const team=winner%2===0?0:1;hTeamTricks[team]++;hLeader=winner;hTurn=winner;hTrick=[];if(hHands.every(hand=>hand.length===0)){hGameOver=true;hPhase='done';const won=hTeamTricks[0]>hTeamTricks[1]?0:1;$('pasoor-message').textContent=`دست تمام شد؛ تیم ${won===0?'شما':'حریف'} برنده شد (${hTeamTricks[0]} به ${hTeamTricks[1]} دور). برای بازی دوباره «بازی جدید» را بزن.`;hRender();return}$('pasoor-message').textContent=`این دور را ${['شما','حریف چپ','هم‌تیمی','حریف راست'][winner]} برد. ${winner===0?'نوبت شماست.': 'حریف شروع می‌کند.'}`;hRender();if(hTurn!==0)hAiSequence()}
+function hResolveTrick(){if(hTrick.length!==4)return;const lead=hTrick[0].c.s;function power(x){return (x.c.s===hTrump?100:0)+(x.c.s===lead?10:0)+x.c.v}const winner=hTrick.reduce((best,x)=>power(x)>power(best)?x:best).p;const team=winner%2===0?0:1;hTeamTricks[team]++;hLeader=winner;hTurn=winner;hTrick=[];if(hHands.every(hand=>hand.length===0)){hGameOver=true;hPhase='done';const won=hTeamTricks[0]>hTeamTricks[1]?0:1;submitGameResult(hokmRunId,'hokm',hTeamTricks[0],won===0?'win':'loss');hokmRunId=null;$('pasoor-message').textContent=`دست تمام شد؛ تیم ${won===0?'شما':'حریف'} برنده شد (${hTeamTricks[0]} به ${hTeamTricks[1]} دور). برای بازی دوباره «بازی جدید» را بزن.`;hRender();return}$('pasoor-message').textContent=`این دور را ${['شما','حریف چپ','هم‌تیمی','حریف راست'][winner]} برد. ${winner===0?'نوبت شماست.': 'حریف شروع می‌کند.'}`;hRender();if(hTurn!==0)hAiSequence()}
 $('pasoor-new').addEventListener('click',pasoorNewGame);
 // بازی مار مستقل از نقشه
 const snakeCanvas=$('snake-board'), snakeCtx=snakeCanvas.getContext('2d');
@@ -320,8 +368,8 @@ function snakeDraw(){
  snake.forEach((p,i)=>{snakeCtx.fillStyle=i===0?'#a3e635':(i%2?'#22c55e':'#10b981');snakeCtx.beginPath();snakeCtx.roundRect(p.x*CELL+2,p.y*CELL+2,CELL-4,CELL-4,6);snakeCtx.fill();if(i===0){snakeCtx.fillStyle='#082f49';snakeCtx.beginPath();snakeCtx.arc(p.x*CELL+CELL*.65,p.y*CELL+CELL*.35,2,0,Math.PI*2);snakeCtx.fill();snakeCtx.beginPath();snakeCtx.arc(p.x*CELL+CELL*.65,p.y*CELL+CELL*.65,2,0,Math.PI*2);snakeCtx.fill()}})
  if(!snakeRunning){snakeCtx.fillStyle='rgba(2,6,23,.72)';snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);snakeCtx.fillStyle='#f8fafc';snakeCtx.font='bold 25px Vazirmatn,Tahoma,sans-serif';snakeCtx.textAlign='center';snakeCtx.fillText(snake.length?'بازی تمام شد!':'آماده‌ای؟',snakeCanvas.width/2,snakeCanvas.height/2-8);snakeCtx.font='16px Vazirmatn,Tahoma,sans-serif';snakeCtx.fillStyle='#bae6fd';snakeCtx.fillText(snake.length?'برای شروع دوباره دکمه را بزن':'شروع را بزن و حرکت کن',snakeCanvas.width/2,snakeCanvas.height/2+25)}
 }
-function snakeStart(){clearInterval(snakeTimer);snake=[{x:Math.floor(COLS/2),y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-1,y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-2,y:Math.floor(ROWS/2)}];snakeDir={x:1,y:0};snakeNext={x:1,y:0};snakeScore=0;snakeRunning=true;$('snake-score').textContent='۰';$('snake-message').textContent='عالیه! خوراکی‌ها را بخور و به دیوار یا بدن خودت برخورد نکن.';snakeFoodNew();snakeDraw();snakeTimer=setInterval(snakeStep,115)}
-function snakeStep(){if(!snakeRunning)return;snakeDir=snakeNext;const head={x:snake[0].x+snakeDir.x,y:snake[0].y+snakeDir.y};if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some((p,i)=>i<snake.length-1&&p.x===head.x&&p.y===head.y)){snakeRunning=false;clearInterval(snakeTimer);$('snake-message').textContent='بازی تمام شد! امتیاز شما: '+snakeScore+' — برای شروع دوباره دکمه را بزن.';snakeDraw();return}snake.unshift(head);if(head.x===snakeFood.x&&head.y===snakeFood.y){snakeScore++;$('snake-score').textContent=snakeScore.toLocaleString('fa-IR');snakeFoodNew()}else snake.pop();snakeDraw()}
+async function snakeStart(){clearInterval(snakeTimer);snakeRunning=false;snakeRunId=null;snakeRunId=await startScoredGame('snake');if(!snakeRunId)return;snake=[{x:Math.floor(COLS/2),y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-1,y:Math.floor(ROWS/2)},{x:Math.floor(COLS/2)-2,y:Math.floor(ROWS/2)}];snakeDir={x:1,y:0};snakeNext={x:1,y:0};snakeScore=0;snakeRunning=true;$('snake-score').textContent='۰';$('snake-message').textContent='عالیه! خوراکی‌ها را بخور و به دیوار یا بدن خودت برخورد نکن.';snakeFoodNew();snakeDraw();snakeTimer=setInterval(snakeStep,115)}
+function snakeStep(){if(!snakeRunning)return;snakeDir=snakeNext;const head={x:snake[0].x+snakeDir.x,y:snake[0].y+snakeDir.y};if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some((p,i)=>i<snake.length-1&&p.x===head.x&&p.y===head.y)){snakeRunning=false;clearInterval(snakeTimer);$('snake-message').textContent='بازی تمام شد! امتیاز شما: '+snakeScore+' — برای شروع دوباره دکمه را بزن.';const finishedRun=snakeRunId;snakeRunId=null;submitGameResult(finishedRun,'snake',snakeScore,'finished');snakeDraw();return}snake.unshift(head);if(head.x===snakeFood.x&&head.y===snakeFood.y){snakeScore++;$('snake-score').textContent=snakeScore.toLocaleString('fa-IR');snakeFoodNew()}else snake.pop();snakeDraw()}
 function snakeTurn(d){
  if(!snakeRunning)return;
  const dirs={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};
@@ -376,6 +424,55 @@ def register_name():
     response=jsonify(ok=True)
     response.set_cookie(USER_COOKIE,uid,max_age=60*60*24*365*5,httponly=True,samesite="Lax",secure=request.is_secure)
     return response
+
+@app.post("/game_start")
+def game_start():
+    uid=user_id_from_cookie()
+    if not uid: return jsonify(error="ابتدا نام و نام خانوادگی را ثبت کنید و صفحه را دوباره باز کنید."),401
+    data=request.get_json(silent=True) or {}; game=str(data.get("game", ""))
+    if game not in ("snake", "hokm"): return jsonify(error="نوع بازی معتبر نیست."),400
+    with db_connect() as c:
+        if not c.execute("SELECT 1 FROM registered_users WHERE user_id=?",(uid,)).fetchone(): return jsonify(error="کاربر ثبت‌نام‌شده پیدا نشد."),401
+        run_id=secrets.token_hex(16); now=datetime.now(timezone.utc).isoformat(timespec="seconds")
+        c.execute("INSERT INTO game_runs(run_id,user_id,game,started_at) VALUES(?,?,?,?)",(run_id,uid,game,now))
+    return jsonify(ok=True,run_id=run_id)
+
+@app.post("/game_finish")
+def game_finish():
+    uid=user_id_from_cookie()
+    if not uid: return jsonify(error="برای ثبت امتیاز باید وارد سایت شوید."),401
+    data=request.get_json(silent=True) or {}; run_id=str(data.get("run_id", "")); game=str(data.get("game", "")); result=str(data.get("result", ""))
+    try: score=int(data.get("score", 0))
+    except (TypeError,ValueError): return jsonify(error="امتیاز معتبر نیست."),400
+    if not run_id or game not in ("snake", "hokm"): return jsonify(error="اطلاعات بازی کامل نیست."),400
+    # قوانین امتیاز: مار به ازای هر خوراکی یک امتیاز تا سقف ۵۰؛ حکم برد ۱۰ و باخت ۲ امتیاز.
+    if game=="snake":
+        if result!="finished" or score<1: return jsonify(error="برای امتیاز گرفتن باید حداقل یک خوراکی بخورید و بازی تمام شود."),400
+        points=min(score,50)
+    else:
+        if result not in ("win","loss"): return jsonify(error="نتیجه بازی حکم معتبر نیست."),400
+        points=10 if result=="win" else 2
+    now=datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with db_connect() as c:
+        row=c.execute("SELECT user_id,game,finished_at FROM game_runs WHERE run_id=?",(run_id,)).fetchone()
+        if not row or row["user_id"]!=uid or row["game"]!=game: return jsonify(error="بازی معتبر پیدا نشد."),400
+        if row["finished_at"]: return jsonify(error="امتیاز این بازی قبلاً ثبت شده است."),409
+        c.execute("UPDATE game_runs SET finished_at=?,points=?,result=? WHERE run_id=? AND finished_at IS NULL",(now,points,result,run_id))
+        total=c.execute("SELECT COALESCE(SUM(points),0) FROM game_runs WHERE user_id=?",(uid,)).fetchone()[0]
+    return jsonify(ok=True,points=points,total_points=total)
+
+@app.get("/leaderboard")
+def leaderboard():
+    with db_connect() as c:
+        rows=c.execute("""SELECT u.first_name,u.last_name,
+          COALESCE(SUM(g.points),0) AS total,
+          COALESCE(SUM(CASE WHEN g.game='snake' THEN g.points ELSE 0 END),0) AS snake,
+          COALESCE(SUM(CASE WHEN g.game='hokm' THEN g.points ELSE 0 END),0) AS hokm
+          FROM registered_users u LEFT JOIN game_runs g ON g.user_id=u.user_id
+          GROUP BY u.user_id,u.first_name,u.last_name
+          HAVING COALESCE(SUM(g.points),0)>0
+          ORDER BY total DESC,u.first_name COLLATE NOCASE ASC,u.last_name COLLATE NOCASE ASC LIMIT 100""").fetchall()
+    return jsonify(rows=[{"rank":i,"name":r["first_name"]+" "+r["last_name"],"total":r["total"],"snake":r["snake"],"hokm":r["hokm"]} for i,r in enumerate(rows,1)])
 
 @app.route("/admin/visitors", methods=["GET","POST"])
 def admin_visitors():
