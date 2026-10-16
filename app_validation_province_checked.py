@@ -2,7 +2,9 @@ from flask import Flask, render_template_string, request, jsonify, send_file, co
 import requests
 import math
 from pathlib import Path
-import os, sqlite3, hmac, html, secrets, re
+import os, sqlite3, hmac, html, secrets
+from concurrent.futures import ThreadPoolExecutor
+from functools import wraps
 from datetime import datetime, timezone
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -561,24 +563,19 @@ try:
 except Exception:
     sync_playwright = None
 import threading
-from concurrent.futures import ThreadPoolExecutor
-from functools import wraps
-
 _FUEL_SESSIONS = {}
 _FUEL_LOCK = threading.RLock()
 _FUEL_URL = "https://utcms.ir/ShowFuelQuota.aspx"
-# Playwright Sync API must run outside any asyncio event loop. Route work is
-# serialized on one dedicated worker so each persistent browser session is
-# created and used on the same thread.
-_FUEL_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="fuel-playwright")
 
-def _fuel_thread(view):
-    @wraps(view)
+# Run all synchronous Playwright operations on one dedicated thread.
+# This avoids inheriting an asyncio event loop from the hosting/request thread
+# and keeps each browser/page session on the same thread.
+_FUEL_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="dalahoo-playwright")
+def _fuel_thread(fn):
+    @wraps(fn)
     def wrapper(*args, **kwargs):
-        # Keep all Playwright sync operations on one dedicated worker thread;
-        # this thread has no asyncio loop and also preserves browser thread affinity.
-        view_with_context = copy_current_request_context(view)
-        return _FUEL_EXECUTOR.submit(view_with_context, *args, **kwargs).result()
+        task = copy_current_request_context(fn)
+        return _FUEL_EXECUTOR.submit(task, *args, **kwargs).result()
     return wrapper
 
 def _fuel_sid():
