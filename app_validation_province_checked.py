@@ -133,7 +133,7 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
   <div class="game-head"><h2 class="game-title">🐍 بازی مار دالاهو</h2><div class="game-tools"><span class="game-score">امتیاز: <span id="snake-score">۰</span></span><button class="game-btn" id="snake-start">شروع / بازی دوباره</button></div></div>
   <div class="game-board-wrap"><canvas id="snake-board" width="600" height="400" aria-label="بازی مار"></canvas></div>
   <p class="game-help" id="snake-message">برای شروع دکمه «شروع» یا کلید Enter را بزن. حرکت با جهت‌ها یا W A S D؛ گوشی: از دکمه‌های جهت‌دار زیر صفحه استفاده کن.</p>
-  <div class="game-pad" aria-label="کنترل لمسی بازی"><button type="button" data-dir="up" aria-label="حرکت به بالا">▲<small>بالا</small></button><button type="button" data-dir="left" aria-label="حرکت به چپ">◀<small>چپ</small></button><button type="button" data-dir="down" aria-label="حرکت به پایین">▼<small>پایین</small></button><button type="button" data-dir="right" aria-label="حرکت به راست">▶<small>راست</small></button></div>
+  <div class="game-pad" aria-label="کنترل لمسی بازی"><button type="button" data-dir="up" aria-label="حرکت به بالا">▲<small>بالا</small></button><button type="button" data-dir="right" aria-label="حرکت به راست">◀<small>چپ</small></button><button type="button" data-dir="down" aria-label="حرکت به پایین">▼<small>پایین</small></button><button type="button" data-dir="left" aria-label="حرکت به چپ">▶<small>راست</small></button></div>
  </div>
 </section>
 </div>
