@@ -166,7 +166,71 @@ button{cursor:pointer;font-weight:800;font-size:14px;border:0;border-radius:11px
  </div>
 </section>
 </div>
-<div id="name-gate" style="display:none;position:fixed;inset:0;background:#0f172acc;z-index:99999;align-items:center;justify-content:center;padding:18px"><form id="name-form" style="width:100%;max-width:430px;background:white;border-radius:20px;padding:24px"><h2 style="color:#2563eb">به دالاهو خوش آمدید</h2><p style="font-size:13px;line-height:1.9;color:#475569">برای ورود، نام و نام خانوادگی خود را وارد کنید. نام شما برای نمایش در فهرست کاربران مدیر سایت ذخیره می‌شود؛ نشانی IP ذخیره نمی‌شود.</p><label for="visitor-first">نام</label><input id="visitor-first" maxlength="60" required style="margin:7px 0 13px"><label for="visitor-last">نام خانوادگی</label><input id="visitor-last" maxlength="80" required style="margin:7px 0 15px"><button type="submit" style="width:100%;background:#2563eb;color:white">ثبت و ورود به سایت</button><p id="name-error" style="color:#b91c1c;font-size:12px"></p></form></div>
+
+(async function visitorGate(){
+  const gate = $('name-gate');
+  const form = $('name-form');
+  const error = $('name-error');
+  const key = 'dalahoo_registered_v1';
+
+  try {
+    if (localStorage.getItem(key) === 'yes') {
+      gate.style.display = 'none';
+      return;
+    }
+  } catch (e) {}
+
+  try {
+    const r = await fetch('/visitor_status');
+    const d = await r.json();
+
+    if (d.registered) {
+      try { localStorage.setItem(key, 'yes'); } catch (e) {}
+      gate.style.display = 'none';
+    } else {
+      gate.style.display = 'flex';
+    }
+  } catch (e) {
+    gate.style.display = 'flex';
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    error.textContent = '';
+
+    const first = $('visitor-first').value.trim();
+    const last = $('visitor-last').value.trim();
+
+    if (!first || !last) {
+      error.textContent = 'نام و نام خانوادگی را وارد کنید.';
+      return;
+    }
+
+    try {
+      const r = await fetch('/register_name', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          first_name: first,
+          last_name: last
+        })
+      });
+
+      const d = await r.json();
+
+      if (!r.ok) {
+        error.textContent = d.error || 'ثبت اطلاعات انجام نشد.';
+        return;
+      }
+
+      try { localStorage.setItem(key, 'yes'); } catch (e) {}
+      gate.style.display = 'none';
+    } catch (e) {
+      error.textContent = 'ارتباط برقرار نشد؛ دوباره تلاش کنید.';
+    }
+  });
+})();
+ style="width:100%;max-width:430px;background:white;border-radius:20px;padding:24px"><h2 style="color:#2563eb">به دالاهو خوش آمدید</h2><p style="font-size:13px;line-height:1.9;color:#475569">برای ورود، نام و نام خانوادگی خود را وارد کنید. نام شما برای نمایش در فهرست کاربران مدیر سایت ذخیره می‌شود؛ نشانی IP ذخیره نمی‌شود.</p><label for="visitor-first">نام</label><input id="visitor-first" maxlength="60" required style="margin:7px 0 13px"><label for="visitor-last">نام خانوادگی</label><input id="visitor-last" maxlength="80" required style="margin:7px 0 15px"><button type="submit" style="width:100%;background:#2563eb;color:white">ثبت و ورود به سایت</button><p id="name-error" style="color:#b91c1c;font-size:12px"></p></form></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const $=id=>document.getElementById(id);
