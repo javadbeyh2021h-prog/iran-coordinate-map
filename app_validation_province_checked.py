@@ -25,6 +25,7 @@ HTML = r"""
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
+<meta name="google-site-verification" content="fnbXC-pgbizfam1Zk1UDoWmiGicWBg2MSEOBUqFpmwc" />
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>دالاهو</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
