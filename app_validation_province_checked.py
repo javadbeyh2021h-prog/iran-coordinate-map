@@ -231,13 +231,20 @@ input:focus{border-color:#818cf8;box-shadow:0 0 0 4px #6366f11a}
 </div>
 <div id="fuel-page" class="page hidden">
  <section class="game-wrap"><div class="game-card">
-  <div class="game-head"><h2 class="game-title">⛽ استعلام سوخت</h2></div>
-  <p class="game-help">این بخش برای استعلام سوخت در نظر گرفته شده است و در نسخه‌های بعدی تکمیل می‌شود.</p>
-  <div style="margin-top:18px;padding:18px;border:1px dashed var(--border);border-radius:14px;text-align:center;background:var(--card)">
-   <div style="font-size:44px;margin-bottom:10px">⛽</div>
-   <strong style="display:block;margin-bottom:8px">بخش استعلام سوخت آماده توسعه است</strong>
-   <span style="color:var(--muted);font-size:13px;line-height:1.9">فعلاً هیچ اطلاعاتی ثبت یا ارسال نمی‌شود. امکانات موردنیاز را بعداً به همین صفحه اضافه می‌کنیم.</span>
-  </div>
+  <div class="game-head"><h2 class="game-title">⛽ استعلام سهمیه سوخت UTCMS</h2></div>
+  <p class="game-help">اطلاعات این فرم فقط برای همین استعلام استفاده می‌شود. برای دریافت کپچا روی دکمه بزنید و کد تصویر رسمی را دستی وارد کنید.</p>
+  <form id="fuel-form" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:16px">
+   <label>شماره ملی / شناسه ملی<input id="fuel-national" required autocomplete="off" maxlength="12" placeholder="شماره ملی یا شناسه ملی" style="margin-top:7px"></label>
+   <label>سال<input id="fuel-year" required value="۱۴۰۵" style="margin-top:7px"></label>
+   <label>ماه<select id="fuel-month" required style="width:100%;padding:13px;margin-top:7px;border:2px solid var(--border);border-radius:12px"><option value="">انتخاب ماه</option><option>فروردین</option><option>اردیبهشت</option><option>خرداد</option><option>تیر</option><option>مرداد</option><option>شهریور</option><option>مهر</option><option>آبان</option><option>آذر</option><option>دی</option><option>بهمن</option><option>اسفند</option></select></label>
+   <label>نوع سهمیه<select id="fuel-type" style="width:100%;padding:13px;margin-top:7px;border:2px solid var(--border);border-radius:12px"><option>پایه</option><option>عملکردی</option></select></label>
+   <label>نوع پلاک<select id="fuel-plate-type" style="width:100%;padding:13px;margin-top:7px;border:2px solid var(--border);border-radius:12px"><option>پلاک ملی</option><option>منطقه آزاد</option></select></label>
+   <label>شماره پلاک<input id="fuel-plate" required autocomplete="off" placeholder="شماره پلاک مطابق سامانه" style="margin-top:7px"></label>
+   <label style="grid-column:1/-1">کد امنیتی تصویر<input id="fuel-captcha" required autocomplete="off" placeholder="کد داخل تصویر کپچا" style="margin-top:7px"></label>
+   <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap"><button class="game-btn" type="button" id="fuel-get-captcha">دریافت / تازه‌سازی کپچا</button><button class="game-btn" type="submit">استعلام سهمیه</button></div>
+  </form>
+  <div id="fuel-captcha-box" class="hidden" style="margin-top:14px;padding:10px;border:1px solid var(--border);border-radius:12px;text-align:center"><img id="fuel-captcha-image" alt="تصویر صفحه UTCMS شامل کپچا" style="max-width:100%;border:1px solid var(--border);border-radius:8px"></div>
+  <div id="fuel-status" role="status" style="margin-top:14px;padding:12px;border-radius:10px;background:#eff6ff;color:#1d4ed8;line-height:1.9">برای شروع، تصویر کپچا را دریافت کنید.</div><div id="fuel-result" style="margin-top:14px;overflow:auto"></div>
  </div></section>
 </div>
 <div id="pasoor-page" class="page hidden">
@@ -268,6 +275,11 @@ const dashboard=$('dashboard'), routePage=$('route-page'), gamePage=$('game-page
 const leaderboardPage=$('leaderboard-page');const appPages=[routePage,gamePage,gamesPage,pasoorPage,fuelPage,leaderboardPage];
 function openPage(id){dashboard.classList.add('hidden');appPages.forEach(p=>p.classList.toggle('hidden',p.id!==id));pageActions.classList.remove('hidden');const labels={'route-page':'نقشه مسیر ایران','games-page':'انتخاب بازی','game-page':'بازی مار کلاسیک','pasoor-page':'پاسور دالاهو','fuel-page':'استعلام سوخت','leaderboard-page':'برترین‌های دالاهو'};$('site-subtitle').textContent=labels[id]||'دالاهو';if(id==='route-page'){setTimeout(()=>map.invalidateSize(),80)}if(id==='game-page'){snakeDraw()}if(id==='pasoor-page'&&!pasoorStarted){pasoorNewGame()}if(id==='leaderboard-page'){loadLeaderboard()}}
 document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.open)));
+
+const fuelStatus=$('fuel-status');function fuelMsg(t,ok=false){fuelStatus.textContent=t;fuelStatus.style.background=ok?'#f0fdf4':'#eff6ff';fuelStatus.style.color=ok?'#166534':'#1d4ed8'}
+$('fuel-get-captcha').addEventListener('click',async()=>{fuelMsg('در حال اتصال به UTCMS…');try{const r=await fetch('/fuel/captcha',{method:'POST'});if(!r.ok){let d={};try{d=await r.json()}catch{}throw Error(d.error||'گرفتن کپچا ناموفق بود')}const blob=await r.blob();$('fuel-captcha-image').src=URL.createObjectURL(blob);$('fuel-captcha-box').classList.remove('hidden');fuelMsg('تصویر صفحه UTCMS نمایش داده شد؛ کد امنیتی را از روی تصویر وارد کنید.',true)}catch(e){fuelMsg(e.message)}});
+$('fuel-form').addEventListener('submit',async e=>{e.preventDefault();fuelMsg('در حال ارسال استعلام…');$('fuel-result').innerHTML='';const data={national_id:$('fuel-national').value.trim(),year:$('fuel-year').value.trim(),month:$('fuel-month').value,quota_type:$('fuel-type').value,plate_type:$('fuel-plate-type').value,plate:$('fuel-plate').value.trim(),captcha:$('fuel-captcha').value.trim()};try{const r=await fetch('/fuel/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const d=await r.json();if(!r.ok)throw Error(d.error||'استعلام انجام نشد');if(!d.rows?.length){fuelMsg(d.message||'جدول نتیجه شناسایی نشد.');return}let h='<table style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#075e59;color:white"><th style="padding:10px">ردیف</th><th style="padding:10px">دوره</th><th style="padding:10px">سهمیه (لیتر)</th></tr></thead><tbody>';for(const x of d.rows)h+='<tr>'+[x.row,x.period,x.quota].map(v=>'<td style="padding:10px;border:1px solid var(--border)">'+String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</td>').join('')+'</tr>'; $('fuel-result').innerHTML=h+'</tbody></table>';fuelMsg('نتیجه استعلام دریافت شد.',true)}catch(e){fuelMsg(e.message)}});
+
 $('back-dashboard').addEventListener('click',()=>{appPages.forEach(p=>p.classList.add('hidden'));pageActions.classList.add('hidden');dashboard.classList.remove('hidden');$('site-subtitle').textContent='داشبورد ابزارها و سرگرمی‌های دالاهو'});
 const map=L.map('map').setView([35.6892,51.3890],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
@@ -531,6 +543,97 @@ def route():
         return jsonify(distance_km=round(route["distance"]/1000,1),duration_text=duration,geometry=route["geometry"])
     except requests.RequestException:return jsonify(error="سرویس مسیریابی پاسخ نداد؛ کمی بعد دوباره تلاش کنید."),502
     except (ValueError,KeyError,TypeError):return jsonify(error="اطلاعات مبدأ یا مقصد ناقص است."),400
+
+
+# UTCMS Playwright bridge; transient sessions only, no identity data stored in SQLite.
+try:
+    from playwright.sync_api import sync_playwright
+except Exception:
+    sync_playwright = None
+import threading
+_FUEL_SESSIONS = {}
+_FUEL_LOCK = threading.RLock()
+_FUEL_URL = "https://utcms.ir/ShowFuelQuota.aspx"
+
+def _fuel_sid():
+    sid=request.cookies.get("dalahoo_fuel_sid","")
+    return sid if len(sid)==32 and all(c in "0123456789abcdef" for c in sid) else secrets.token_hex(16)
+
+@app.post("/fuel/captcha")
+def fuel_captcha():
+    if sync_playwright is None:
+        return jsonify(error="Playwright نصب نیست؛ requirements و نصب Chromium را در Render بررسی کنید."),503
+    sid=_fuel_sid()
+    with _FUEL_LOCK:
+        old=_FUEL_SESSIONS.pop(sid,None)
+        if old:
+            try: old["context"].close(); old["browser"].close(); old["pw"].stop()
+            except Exception: pass
+        try:
+            pw=sync_playwright().start(); browser=pw.chromium.launch(headless=True,args=["--no-sandbox"])
+            context=browser.new_context(viewport={"width":1280,"height":1000},locale="fa-IR"); page=context.new_page()
+            page.goto(_FUEL_URL,wait_until="domcontentloaded",timeout=45000); page.wait_for_timeout(1500)
+            _FUEL_SESSIONS[sid]={"pw":pw,"browser":browser,"context":context,"page":page}
+            from flask import Response
+            response=Response(page.screenshot(full_page=True,type="png"),mimetype="image/png")
+            response.headers["Cache-Control"]="no-store"
+            response.set_cookie("dalahoo_fuel_sid",sid,httponly=True,samesite="Lax",secure=request.is_secure,max_age=1800)
+            return response
+        except Exception as e:
+            return jsonify(error="اتصال به UTCMS ناموفق بود: "+str(e)[:180]),502
+
+@app.post("/fuel/submit")
+def fuel_submit():
+    if sync_playwright is None: return jsonify(error="Playwright در محیط اجرا نصب نیست."),503
+    sid=request.cookies.get("dalahoo_fuel_sid",""); d=request.get_json(silent=True) or {}
+    if any(not str(d.get(k,"")).strip() for k in ("national_id","year","month","quota_type","plate_type","plate","captcha")):
+        return jsonify(error="همه فیلدها را تکمیل کنید."),400
+    with _FUEL_LOCK:
+        item=_FUEL_SESSIONS.get(sid)
+        if not item: return jsonify(error="نشست کپچا منقضی شده؛ دوباره کپچا بگیرید."),409
+        page=item["page"]
+        try:
+            # Match common Persian accessible names first; if UTCMS changes its markup this reports an error instead of guessing silently.
+            def fill(patterns,value):
+                for pat in patterns:
+                    for getter in (page.get_by_label,page.get_by_placeholder):
+                        try:
+                            loc=getter(re.compile(pat,re.I))
+                            if loc.count(): loc.first.fill(str(value)); return True
+                        except Exception: pass
+                return False
+            fill([r"شماره ملی",r"شناسه ملی"],d["national_id"])
+            fill([r"کد امنیتی",r"کد.*تصویر",r"عبارت.*تصویر"],d["captcha"])
+            fill([r"شماره پلاک",r"پلاک"],d["plate"])
+            # Select options by visible Persian text where available.
+            for sel in page.locator("select:visible").all():
+                opts=sel.locator("option").all_text_contents()
+                if any(d["month"] in x for x in opts):
+                    try: sel.select_option(label=d["month"])
+                    except Exception: pass
+                elif any(d["year"] in x for x in opts):
+                    try: sel.select_option(label=d["year"])
+                    except Exception: pass
+            for value in (d["quota_type"],d["plate_type"]):
+                try:
+                    loc=page.get_by_label(re.compile(re.escape(value),re.I))
+                    if loc.count(): loc.first.check()
+                except Exception: pass
+            submit=page.get_by_role("button",name=re.compile("مشاهده سهمیه"))
+            if not submit.count(): submit=page.locator("input[type=submit],button[type=submit]")
+            if not submit.count(): return jsonify(error="دکمه مشاهده سهمیه در صفحه UTCMS پیدا نشد؛ احتمالاً ساختار فرم تغییر کرده است."),502
+            submit.first.click(timeout=10000); page.wait_for_timeout(1500)
+            rows=[]
+            for tr in page.locator("table tr").all():
+                cells=[re.sub(r"\s+"," ",c.inner_text().strip()) for c in tr.locator("th,td").all()]
+                if len(cells)>=3 and not ("ردیف" in " ".join(cells) and "سهمیه" in " ".join(cells)):
+                    rows.append({"row":cells[0],"period":cells[1],"quota":cells[2]})
+            if rows: return jsonify(ok=True,rows=rows)
+            message=re.sub(r"\s+"," ",page.locator("body").inner_text())[:350]
+            return jsonify(ok=True,rows=[],message="جدول نتیجه شناسایی نشد. پیام صفحه UTCMS: "+message)
+        except Exception as e:
+            return jsonify(error="استعلام خودکار کامل نشد: "+str(e)[:180]+". ممکن است انتخابگرهای فرم UTCMS نیاز به تنظیم داشته باشند."),502
+
 
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=5000,debug=False)
